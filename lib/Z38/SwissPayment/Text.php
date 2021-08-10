@@ -7,7 +7,7 @@ use InvalidArgumentException;
 
 class Text
 {
-    const TEXT_NON_CH = '/[^A-Za-z0-9 .,:\'\/()?+\-!"#%&*;<>÷=@_$£[\]{}\` ́~àáâäçèéêëìíîïñòóôöùúûüýßÀÁÂÄÇÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜÑ]+/u';
+    const TEXT_NON_CH = '/[^A-Za-z0-9 .,:\'\/()?+\-!"#%&*;<>÷=@_$£[\]{}\` ́~àáâåäãæçèéêëìíîïñòóôöøùúûüýßÀÁÂÅÄÃÆÇÈÉÊËÌÍÎÏÒÓÔÖØÙÚÛÜÑðÐ]+/u';
     const TEXT_NON_SWIFT = '/[^A-Za-z0-9 .,:\'\/()?+\-]+/';
 
     /**
@@ -95,7 +95,7 @@ class Text
             throw new InvalidArgumentException(sprintf('The string can not be empty or longer than %d characters.', $maxLength));
         }
         if (preg_match($pattern, $input)) {
-            throw new InvalidArgumentException('The string contains invalid characters.');
+            throw new InvalidArgumentException(sprintf('The string %s contains invalid characters.', $input));
         }
 
         return $input;
