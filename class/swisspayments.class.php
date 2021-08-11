@@ -60,7 +60,6 @@ class SwisspaymentsClass // extends CommonObject
   public function validateCode($user) {
     global $conf, $langs;
     $error = 0;
-
     // Clean parameters
     if (isset($this->codeline)) {
       $this->codeline = trim($this->codeline);
@@ -136,8 +135,8 @@ class SwisspaymentsClass // extends CommonObject
     }
     else if ($this->isQRCode)
     {
-      $qr_lines = explode(PHP_EOL, $this->codeline);
-
+      // Strip CR from QR code (PHP_EOL won't work here)
+      $qr_lines = explode("\n", str_replace("\r", "", $this->codeline));
       if (count($qr_lines) == 32)
       {
         // Correct number of lines
@@ -184,7 +183,7 @@ class SwisspaymentsClass // extends CommonObject
             {
               $errmsg = "Currency must be CHF, got ".$qr_line[18];
               $error++;
-              dol_syslog(__METHOD__ . " " . $errmsg, LOG_INFO);
+              dol_syslog(__METHOD__ . " " . $errmsg, LOG_WARNING);
               $this->error = $errmsg;
               return -1 * $error;
             }
@@ -193,7 +192,7 @@ class SwisspaymentsClass // extends CommonObject
           {
             $errmsg = "IBAN number must CH or LI account, got ".$qr_line[3];
             $error++;
-            dol_syslog(__METHOD__ . " " . $errmsg, LOG_INFO);
+            dol_syslog(__METHOD__ . " " . $errmsg, LOG_WARNING);
             $this->error = $errmsg;
             return -1 * $error;
           }
@@ -202,7 +201,7 @@ class SwisspaymentsClass // extends CommonObject
         {
             $errmsg = "Invalid header and/or footer lines in QR code, probably not a swiss QR invoice";
             $error++;
-            dol_syslog(__METHOD__ . " " . $errmsg, LOG_INFO);
+            dol_syslog(__METHOD__ . " " . $errmsg, LOG_WARNING);
             $this->error = $errmsg;
             return -1 * $error;
         }
@@ -212,10 +211,13 @@ class SwisspaymentsClass // extends CommonObject
           $errmsg = "Invalid number of data lines in QR code. ".
                     "Expecting 32, got ".count($qr_lines);
           $error++;
-          dol_syslog(__METHOD__ . " " . $errmsg, LOG_INFO);
+          dol_syslog(__METHOD__ . " " . $errmsg, LOG_WARNING);
           $this->error = $errmsg;
           return -1 * $error;
       }
+    }
+    else {
+          dol_syslog(__METHOD__ . "Neither ESR not QRBill <".$qr_line.">", LOG_INFO);
     }
     return 1;
   }

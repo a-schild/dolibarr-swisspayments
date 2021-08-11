@@ -265,7 +265,7 @@ if ($result > 0) {
                 //echo "<div>Found supplier (".$fk_societe.")</div>";
                 if ($myobject->iban != $iban_prefix)
                 {
-                  echo "<div>Updating IBAN number to clean format (old $iban_prefix new $myobject->iban)</div>";
+                  //echo "<div>Updating IBAN number to clean format (old $iban_prefix new $myobject->iban)</div>";
                   $sql_upd= "update ".MAIN_DB_PREFIX."societe_rib set iban_prefix ='".$db->escape($myobject->iban)."' where rowid=".$id;
                   $db->query($sql_upd);
                 }
@@ -274,6 +274,14 @@ if ($result > 0) {
                 $societe = new Societe($db);
                 $result = $societe->fetch($fk_societe);
                 
+                if (! $_POST["billnr"])
+                {
+                  $newESRSoc = new Swisspaymentssoc($db);
+                  if ($newESRSoc->fetch(null, null, null, null, $fk_societe) > 0 && $newESRSoc->id) {
+                    $myobject->findBillno($newESRSoc->startorderno, $newESRSoc->endorderno);
+                  }
+                }
+
                 // Now check billNr for duplicates
                 $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
                 if ($resql) {
@@ -393,7 +401,7 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
   }
 }
 
-if ($facture && $facture->id > 0 && $facture->statut == 0) {
+if ($error == 0 && $facture && $facture->id > 0 && $facture->statut == 0) {
   $loc = DOL_URL_ROOT . '/fourn/facture/card.php?facid=' . $facture->id;
   header("Location: " . $loc);
   exit;
@@ -415,12 +423,16 @@ if (!($facture && $facture->id > 0) && ($action == 'createesrid' || $action == '
   if ($societe->id == 0) {
     if ($myobject->isESR) {
       echo "<h2>Unbekannter ESR Teilnehmer</h2>";
+    } else if ($myobject->isQRCode) {
+      echo "<h2>Unbekannter QR Bill Teilnehmer</h2>";
     } else {
       echo "<h2>Unbekannter IBAN Teilnehmer</h2>";
     }
   } else {
     if ($myobject->isESR) {
       echo "<h2>Bekannter ESR Teilnehmer</h2>";
+    } else if ($myobject->isQRCode) {
+      echo "<h2>Unbekannter QR Bill Teilnehmer</h2>";
     } else {
       echo "<h2>Bekannter IBAN Teilnehmer</h2>";
     }
@@ -500,7 +512,7 @@ if (!($facture && $facture->id > 0) && ($action == 'createesrid' || $action == '
   } else {
     echo "<input type='hidden' name='action' value='createesrid' >";
   }
-  echo "</td></tr>";
+  echo "</td></tr></table>";
   echo "</form>";
   if ($societe->id == 0) {
     echo '<script type="text/javascript" language="javascript">
