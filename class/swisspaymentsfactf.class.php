@@ -1,11 +1,11 @@
 <?php
 /* Swiss payments from ESR to DTA
  * Copyright (C) 2016 Aarboard AG, Andre Schild, www.aarboard.ch
- */
-
-/**
+ * 
  *  \file       class/swisspaymentsfactf.class.php
  *  \ingroup    swisspayments
+ * 
+ * 
  */
 
 // Put here all includes required by your class file
@@ -13,7 +13,7 @@ require_once(DOL_DOCUMENT_ROOT."/core/class/commonobject.class.php");
 
 
 /**
- *	Put here description of your class
+ *	Stores the swiss payment specific informations, like ESR or QR esr nr
  */
 class Swisspaymentsfactf extends CommonObject
 {
@@ -80,9 +80,9 @@ class Swisspaymentsfactf extends CommonObject
         $sql.= ") VALUES (";
         
 		$sql.= " ".(! isset($this->fk_factid)?'NULL':"'".$this->fk_factid."'").",";
-		$sql.= " ".(! isset($this->esrline)?'NULL':"'".$this->esrline."',");
-		$sql.= " ".(! isset($this->esrpartynr)?'NULL':"'".$this->esrpartynr."',");
-		$sql.= " ".(! isset($this->esrrefnr)?'NULL':"'".$this->esrrefnr."'");
+		$sql.= " ".(! isset($this->esrline)?'NULL':"'".$this->db->escape(str_replace("\n", "\\n", str_replace("\r", "",$this->esrline)))."'").",";
+		$sql.= " ".(! isset($this->esrpartynr)?"'QRBILL'":"'". $this->db->escape($this->esrpartynr)."'").",";
+		$sql.= " ".(! isset($this->esrrefnr)?"'QRBILL'":"'".$this->db->escape($this->esrrefnr)."'");
         
 		$sql.= ")";
 

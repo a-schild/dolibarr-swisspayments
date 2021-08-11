@@ -83,7 +83,7 @@ class modswisspayments extends DolibarrModules
 			// Set this to 1 if module has its own models directory
 			//'models' => 0,
 			// Set this to relative path of css if module has its own css file
-			//'css' => array('swisspayments/css/mycss.css.php'),
+			'css' => array('swisspayments/css/mycss.css'),
 			// Set this to relative path of js file if module must load a js on all pages
 			// 'js' => array('mymodule/js/mymodule.js'),
 			// Set here all hooks context managed by module

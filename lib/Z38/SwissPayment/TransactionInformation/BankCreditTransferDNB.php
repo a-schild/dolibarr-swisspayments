@@ -15,7 +15,7 @@ use Z38\SwissPayment\AccountInterface;
 /**
  * BankCreditTransfer contains all the information about a type 3 transaction.
  */
-class BankCreditTransfer extends CreditTransfer
+class BankCreditTransferDNB extends CreditTransfer
 {
     /**
      * @var IBAN

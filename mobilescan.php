@@ -1,14 +1,24 @@
 <?php
 
 /* 
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- *
+ * Page to scan or upload qr code
+ * 
  * https://blog.minhazav.dev/research/html5-qrcode
  * https://github.com/mebjas/html5-qrcode
  * 
  */
+require '../../main.inc.php';
+
+global $db, $langs, $user;
+
+// Access control
+if ($user->societe_id > 0) {
+	// External user
+	accessforbidden();
+}
+
+if (! $user->rights->swisspayments->invoices->create) accessforbidden();
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -17,16 +27,17 @@
     <script type="text/javascript" src="js/html5-qrcode.min.js"></script>
   </head>
   <body>
-      <form action="decodeqr.php" id="qrform">
+      <form action="createinvoice.php" id="qrform" method="post">
           <textarea id="qrcode" name="qrcode" style="display:none"></textarea>
+          <input type="hidden" name="action" value="analyzecode">
       </form>
   <div id="reader" width="100%"></div>
   <script>
     function onScanSuccess(decodedText, decodedResult) {
   // handle the scanned code as you like, for example:
   console.log(`Code matched = ${decodedText}`, decodedResult);
-  alert(decodedText);
-  alert(decodedResult);
+  //alert(decodedText);
+  //alert(decodedResult);
   var q= document.getElementById("qrcode");
   q.value= decodedText;
   var f= document.getElementById("qrform");
@@ -65,8 +76,8 @@ fileinput.addEventListener('change', e => {
   .then(decodedText => {
     // success, use decodedText
     console.log(decodedText);
-  alert(decodedText);
-  alert(decodedResult);
+  //alert(decodedText);
+  //alert(decodedResult);
   var q= document.getElementById("qrcode");
   q.value= decodedText;
   var f= document.getElementById("qrform");

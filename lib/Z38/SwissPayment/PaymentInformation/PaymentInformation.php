@@ -75,7 +75,7 @@ class PaymentInformation
      *
      * @throws \InvalidArgumentException When any of the inputs contain invalid characters or are too long.
      */
-    public function __construct($id, $debtorName, FinancialInstitutionInterface $debtorAgent, IBAN $debtorIBAN)
+    public function __construct($id, $debtorName, FinancialInstitutionInterface $debtorAgent, IBAN $debtorIBAN, $serviceLevel = '', $localInstrument = '')
     {
         if (!$debtorAgent instanceof BIC && !$debtorAgent instanceof IID) {
             throw new \InvalidArgumentException('The debtor agent must be an instance of BIC or IID.');
@@ -88,6 +88,15 @@ class PaymentInformation
         $this->debtorName = Text::assert($debtorName, 70);
         $this->debtorAgent = $debtorAgent;
         $this->debtorIBAN = $debtorIBAN;
+
+        // this is special for our usecase with SEB
+        if ($serviceLevel) {
+            $this->serviceLevel = $serviceLevel;
+        }
+
+        if ($localInstrument) {
+            $this->localInstrument = $localInstrument;
+        }
     }
 
     /**
@@ -221,17 +230,17 @@ class PaymentInformation
 
         if ($this->hasPaymentTypeInformation()) {
             $paymentType = $doc->createElement('PmtTpInf');
-            $localInstrument = $this->localInstrument ?: $this->inferLocalInstrument();
-            if ($localInstrument !== null) {
-                $localInstrumentNode = $doc->createElement('LclInstrm');
-                $localInstrumentNode->appendChild($doc->createElement('Prtry', $localInstrument));
-                $paymentType->appendChild($localInstrumentNode);
-            }
             $serviceLevel = $this->serviceLevel ?: $this->inferServiceLevel();
             if ($serviceLevel !== null) {
                 $serviceLevelNode = $doc->createElement('SvcLvl');
-                $serviceLevelNode->appendChild($doc->createElement('Cd', $serviceLevel));
+                $serviceLevelNode->appendChild($doc->createElement('Prtry', $serviceLevel));
                 $paymentType->appendChild($serviceLevelNode);
+            }
+            $localInstrument = $this->localInstrument ?: $this->inferLocalInstrument();
+            if ($localInstrument !== null) {
+                $localInstrumentNode = $doc->createElement('LclInstrm');
+                $localInstrumentNode->appendChild($doc->createElement('Cd', $localInstrument));
+                $paymentType->appendChild($localInstrumentNode);
             }
             if ($this->categoryPurpose !== null) {
                 $categoryPurposeNode = $doc->createElement('CtgyPurp');
@@ -259,10 +268,10 @@ class PaymentInformation
 
         foreach ($this->transactions as $transaction) {
             if ($this->hasPaymentTypeInformation()) {
-                if ($transaction->getLocalInstrument() !== $localInstrument) {
+                if (!empty($transaction->getLocalInstrument()) && $transaction->getLocalInstrument() !== $localInstrument) {
                     throw new \LogicException('You can not set the local instrument on B- and C-level.');
                 }
-                if ($transaction->getServiceLevel() !== $serviceLevel) {
+                if (!empty($transaction->getServiceLevel()) && $transaction->getServiceLevel() !== $serviceLevel) {
                     throw new \LogicException('You can not set the service level on B- and C-level.');
                 }
             }

@@ -142,9 +142,10 @@ class Swisspaymentssoc extends CommonObject
      *  @param	string	$ref	Ref
      *  @param  string  $pcAccount
      *  @param  string  $esrid
+     *  @param  string  $socid When searching this, we look only for esrid='QRBILL'
      *  @return int          	<0 if KO, >0 if OK
      */
-    function fetch($id,$ref='',$pcAccount='',$esrid='')
+    function fetch($id,$ref='',$pcAccount='',$esrid='', $socid='')
     {
     	global $langs;
         $sql = "SELECT";
@@ -159,6 +160,7 @@ class Swisspaymentssoc extends CommonObject
 		
         $sql.= " FROM ".MAIN_DB_PREFIX.$this->table_element." as t";
         if ($ref) $sql.= " WHERE t.ref = '".$ref."'";
+        else if ($socid) $sql.= " WHERE t.fk_societe = '".$this->db->escape($socid)."' AND t.esrid = 'QRBILL'";
         else if ($pcAccount) $sql.= " WHERE t.pcaccount = '".$this->db->escape($pcAccount)."' AND t.esrid = '".$this->db->escape($esrid)."'";
         else $sql.= " WHERE t.rowid = ".$id;
 
