@@ -8,29 +8,7 @@
  *	\ingroup	swisspayments
  *	\brief		Form to enter new PVR bills
  */
-$res = 0;
-if (! $res && file_exists("../main.inc.php")) {
-	$res = @include "../main.inc.php";
-}
-if (! $res && file_exists("../../main.inc.php")) {
-	$res = @include "../../main.inc.php";
-}
-if (! $res && file_exists("../../../main.inc.php")) {
-	$res = @include "../../../main.inc.php";
-}
-// The following should only be used in development environments
-if (! $res && file_exists("../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include "../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res && file_exists("../../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include "../../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res && file_exists("../../../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include"../../../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res) {
-	die("Main include failed");
-}
+require '../../main.inc.php';
 
 global $db, $langs, $user;
 

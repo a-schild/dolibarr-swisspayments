@@ -31,11 +31,6 @@ class CustomerCreditTransfer extends AbstractMessage
      */
     protected $creationTime;
 
-   /**
-     * @var string
-     */
-    protected $initiatingPartyId;
-
     /**
      * Constructor
      *
@@ -44,13 +39,12 @@ class CustomerCreditTransfer extends AbstractMessage
      *
      * @throws \InvalidArgumentException When any of the inputs contain invalid characters or are too long.
      */
-    public function __construct($id, $initiatingParty, $initiatingPartyId = null)
+    public function __construct($id, $initiatingParty)
     {
         $this->id = Text::assertIdentifier($id);
         $this->initiatingParty = Text::assert($initiatingParty, 70);
         $this->payments = [];
         $this->creationTime = new \DateTime();
-        $this->initiatingPartyId = Text::assertOptional($initiatingPartyId, 70);
     }
 
     /**
@@ -96,7 +90,7 @@ class CustomerCreditTransfer extends AbstractMessage
      */
     protected function getSchemaName()
     {
-        return 'urn:iso:std:iso:20022:tech:xsd:pain.001.001.03';
+        return 'http://www.six-interbank-clearing.com/de/pain.001.001.03.ch.02.xsd';
     }
 
     /**
@@ -104,7 +98,7 @@ class CustomerCreditTransfer extends AbstractMessage
      */
     protected function getSchemaLocation()
     {
-        return 'pain.001.001.03.xsd';
+        return 'pain.001.001.03.ch.02.xsd';
     }
 
     /**
@@ -113,7 +107,7 @@ class CustomerCreditTransfer extends AbstractMessage
     protected function buildDom(\DOMDocument $doc)
     {
         $transactionCount = 0;
-        $transactionSum = new Money\Mixed(0);
+        $transactionSum = new Money\MixedMoney(0);
         foreach ($this->payments as $payment) {
             $transactionCount += $payment->getTransactionCount();
             $transactionSum = $transactionSum->plus($payment->getTransactionSum());
@@ -128,37 +122,6 @@ class CustomerCreditTransfer extends AbstractMessage
         $initgParty = $doc->createElement('InitgPty');
         $initgParty->appendChild(Text::xml($doc, 'Nm', $this->initiatingParty));
         $initgParty->appendChild($this->buildContactDetails($doc));
-        $header->appendChild($initgParty);
-        $root->appendChild($header);
-
-        foreach ($this->payments as $payment) {
-            $root->appendChild($payment->asDom($doc));
-        }
-
-        return $root;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function buildDNBDom(\DOMDocument $doc)
-    {
-        $transactionCount = 0;
-        $transactionSum = new Money\Mixed(0);
-        foreach ($this->payments as $payment) {
-            $transactionCount += $payment->getTransactionCount();
-            $transactionSum = $transactionSum->plus($payment->getTransactionSum());
-        }
-
-        $root = $doc->createElement('CstmrCdtTrfInitn');
-        $header = $doc->createElement('GrpHdr');
-        $header->appendChild(Text::xml($doc, 'MsgId', $this->id));
-        $header->appendChild(Text::xml($doc, 'CreDtTm', $this->creationTime->format('Y-m-d\TH:i:sP')));
-        $header->appendChild(Text::xml($doc, 'NbOfTxs', $transactionCount));
-        $header->appendChild(Text::xml($doc, 'CtrlSum', $transactionSum->format()));
-        $initgParty = $doc->createElement('InitgPty');
-        $initgParty->appendChild(Text::xml($doc, 'Nm', $this->initiatingParty));
-        $initgParty->appendChild($this->buildDNBContactDetails($doc));
         $header->appendChild($initgParty);
         $root->appendChild($header);
 

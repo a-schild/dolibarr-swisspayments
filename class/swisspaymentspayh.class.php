@@ -35,7 +35,7 @@ dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/IID.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/ISRParticipant.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/Message/CustomerCreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/Money/Money.php');
-dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/Money/Mixed.php');
+dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/Money/MixedMoney.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/Money/CHF.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/PaymentInformation/CategoryPurposeCode.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/PaymentInformation/PaymentInformation.php');
@@ -45,6 +45,7 @@ dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/PostalAddressInterf
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/StructuredPostalAddress.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/CreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/BankCreditTransfer.php');
+dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/BankCreditTransferWithQRR.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/ForeignCreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/IS1CreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/IS2CreditTransfer.php');
@@ -68,6 +69,7 @@ use Z38\SwissPayment\PaymentInformation\SEPAPaymentInformation;
 use Z38\SwissPayment\PostalAccount;
 use Z38\SwissPayment\StructuredPostalAddress;
 use Z38\SwissPayment\TransactionInformation\BankCreditTransfer;
+use Z38\SwissPayment\TransactionInformation\BankCreditTransferWithQRR;
 use Z38\SwissPayment\TransactionInformation\ForeignCreditTransfer;
 use Z38\SwissPayment\TransactionInformation\IS1CreditTransfer;
 use Z38\SwissPayment\TransactionInformation\IS2CreditTransfer;
@@ -489,6 +491,8 @@ class Swisspaymentspayh extends CommonObject {
                     $result= $fact->fetch($bill);
                     if ($result >= 0)
                     {
+                        $isQRBILL= false;
+                        $isESR= false;
                         dol_syslog("Facture: " . var_export($fact, true));
                         $soc = new Societe($this->db);
                         $result= $soc->fetch($fact->socid);
@@ -507,17 +511,29 @@ class Swisspaymentspayh extends CommonObject {
                             $result= $factf->fetch(null, $bill, null);
                             if ($result > 0 && isset($factf->id))
                             {
-                                $isESR= true;
-                                if (!$this->isISO20022)
-                                {
+                              if ($factf->esrpartynr=="QRBILL")
+                              {
+                                 $isQRBILL= true;
+                                 if (!$this->isISO20022)
+                                 {
+                                    $seqNr = $paymentOut->addTransactionIBAN();
+                                    $trans = $paymentOut->loadTransaction($seqNr);
+                                    $trans->setProcessingDay(dtaChFile::dateToDATString($paiement->date));
+                                 }
+                              }
+                              else
+                              {
+                                 $isESR= true;
+                                 if (!$this->isISO20022)
+                                 {
                                     $seqNr = $paymentOut->addTransactionESR();
                                     $trans = $paymentOut->loadTransaction($seqNr);
                                     $trans->setProcessingDay(dtaChFile::dateToDATString($paiement->date));
-                                }
+                                 }
+                              }
                             }
                             else
                             {
-                                $isESR= false;
                                 if (!$this->isISO20022)
                                 {
                                     $seqNr = $paymentOut->addTransactionIBAN();
@@ -556,6 +572,21 @@ class Swisspaymentspayh extends CommonObject {
                                         new ISRParticipant($factf->esrpartynr),
                                         $factf->esrrefnr
                                             );
+                                }
+                                else if ($isQRBILL)
+                                {
+                                  $iban= new IBAN($defaultRIB->iban);
+                                    $transaction = new BankCreditTransferWithQRR(
+                                                $paiement->id,
+                                                $paiement->ref,
+                                                new Money\CHF(round(floatval($paiement->montant)*100.0)),
+                                                $soc->name,
+                                                UnstructuredPostalAddress::sanitize($rLine1 . ' ' . $rLine2, $soc->zip . ' ' . $soc->town),
+                                                $iban,
+                                                IID::fromIBAN($iban), /* Not needed for QRR */
+                                                $factf->esrline
+                                            );
+                                    //$transaction->setRemittanceInformation($fact->esrrefnr);
                                 }
                                 else
                                 {

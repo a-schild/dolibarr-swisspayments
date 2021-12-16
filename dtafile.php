@@ -8,37 +8,14 @@
  *	\ingroup	swisspayments
  *	\brief		Create DTA payment file, from data previously stored by dtapayments.php
  */
+require '../../main.inc.php';
 
-$res = 0;
-if (! $res && file_exists("../main.inc.php")) {
-	$res = @include "../main.inc.php";
-}
-if (! $res && file_exists("../../main.inc.php")) {
-	$res = @include "../../main.inc.php";
-}
-if (! $res && file_exists("../../../main.inc.php")) {
-	$res = @include "../../../main.inc.php";
-}
-// The following should only be used in development environments
-if (! $res && file_exists("../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include "../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res && file_exists("../../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include "../../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res && file_exists("../../../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include"../../../../../dolibarr/htdocs/main.inc.php";
-}
-require_once(DOL_DOCUMENT_ROOT."/core/class/html.formother.class.php");
-require_once(DOL_DOCUMENT_ROOT."/core/class/html.formfile.class.php");
-
-if (! $res) {
-	die("Main include failed");
-}
 
 global $db, $langs, $user;
 
-require_once DOL_DOCUMENT_ROOT .'/fourn/class/fournisseur.facture.class.php';
+require_once(DOL_DOCUMENT_ROOT."/core/class/html.formother.class.php");
+require_once(DOL_DOCUMENT_ROOT."/core/class/html.formfile.class.php");
+require_once DOL_DOCUMENT_ROOT.'/fourn/class/fournisseur.facture.class.php';
 require_once DOL_DOCUMENT_ROOT.'/compta/facture/class/paymentterm.class.php';
 require_once(DOL_DOCUMENT_ROOT.'/contrat/class/contrat.class.php');
 require_once(DOL_DOCUMENT_ROOT.'/core/class/discount.class.php');

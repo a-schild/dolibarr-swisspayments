@@ -30,8 +30,8 @@ class IBAN implements AccountInterface
         if (!preg_match(self::PATTERN, $cleanedIban)) {
             throw new \InvalidArgumentException('IBAN is not properly formatted.');
         }
-        if (!self::isValidSwiss($cleanedIban) && !self::isValidSwedish($cleanedIban)) {
-            throw new \InvalidArgumentException('IBAN is invalid.');
+        if (!self::check($cleanedIban)) {
+            throw new \InvalidArgumentException('IBAN has an invalid checksum.');
         }
 
         $this->iban = $cleanedIban;
@@ -76,7 +76,7 @@ class IBAN implements AccountInterface
      *
      * @return bool true if checksum is correct, false otherwise
      */
-    protected static function isValidSwiss($iban)
+    protected static function check($iban)
     {
         $chars = str_split(substr($iban, 4).substr($iban, 0, 4));
         $length = count($chars);
@@ -100,11 +100,6 @@ class IBAN implements AccountInterface
         }
 
         return ($r == 1);
-    }
-
-    protected static function isValidSwedish($iban)
-    {
-        return preg_match('/SE\d{2}[ ]\d{4}[ ]\d{4}[ ]\d{4}[ ]\d{4}[ ]\d{4}|SE\d{22}/', $iban);
     }
 
     /**

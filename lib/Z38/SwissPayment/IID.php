@@ -26,7 +26,7 @@ class IID implements FinancialInstitutionInterface
     {
         $iid = (string) $iid;
         if (!preg_match('/^[0-9]{3,5}$/', $iid)) {
-            throw new InvalidArgumentException(sprintf('IID %s is not properly formatted.', $iid));
+            throw new InvalidArgumentException('IID is not properly formatted.');
         }
 
         $this->iid = str_pad($iid, 5, '0', STR_PAD_LEFT);
@@ -37,12 +37,12 @@ class IID implements FinancialInstitutionInterface
      *
      * @param IBAN $iban
      *
-     * @throws \InvalidArgumentException When the supplied IBAN is not from Switzerland
+     * @throws \InvalidArgumentException When the supplied IBAN is not from a supported country.
      */
     public static function fromIBAN(IBAN $iban)
     {
-        if ($iban->getCountry() !== 'CH') {
-            throw new InvalidArgumentException('IID can only be extracted from Swiss IBANs.');
+        if (!in_array($iban->getCountry(), ['CH', 'LI'])) {
+            throw new InvalidArgumentException('IID can only be extracted from Swiss and Lichtenstein IBANs.');
         }
 
         return new self(substr($iban->normalize(), 4, 5));
@@ -66,7 +66,7 @@ class IID implements FinancialInstitutionInterface
         $xml = $doc->createElement('FinInstnId');
         $clearingSystem = $doc->createElement('ClrSysMmbId');
         $clearingSystemId = $doc->createElement('ClrSysId');
-        $clearingSystemId->appendChild($doc->createElement('Cd', 'SESBA'));
+        $clearingSystemId->appendChild($doc->createElement('Cd', 'CHBCC'));
         $clearingSystem->appendChild($clearingSystemId);
         $clearingSystem->appendChild($doc->createElement('MmbId', ltrim($this->iid, '0'))); // strip zeroes for legacy systems
         $xml->appendChild($clearingSystem);

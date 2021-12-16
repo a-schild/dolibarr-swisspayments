@@ -10,36 +10,13 @@
  *	\brief		Create DTA payment items
  */
 
-$res = 0;
-if (! $res && file_exists("../main.inc.php")) {
-	$res = @include "../main.inc.php";
-}
-if (! $res && file_exists("../../main.inc.php")) {
-	$res = @include "../../main.inc.php";
-}
-if (! $res && file_exists("../../../main.inc.php")) {
-	$res = @include "../../../main.inc.php";
-}
-// The following should only be used in development environments
-if (! $res && file_exists("../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include "../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res && file_exists("../../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include "../../../../dolibarr/htdocs/main.inc.php";
-}
-if (! $res && file_exists("../../../../../dolibarr/htdocs/main.inc.php")) {
-	$res = @include"../../../../../dolibarr/htdocs/main.inc.php";
-}
-require_once(DOL_DOCUMENT_ROOT."/core/class/html.formother.class.php");
-require_once(DOL_DOCUMENT_ROOT."/core/class/html.formfile.class.php");
-
-if (! $res) {
-	die("Main include failed");
-}
+require '../../main.inc.php';
 
 global $db, $langs, $user;
 
-require_once DOL_DOCUMENT_ROOT .'/fourn/class/fournisseur.facture.class.php';
+require_once(DOL_DOCUMENT_ROOT."/core/class/html.formother.class.php");
+require_once(DOL_DOCUMENT_ROOT."/core/class/html.formfile.class.php");
+require_once DOL_DOCUMENT_ROOT.'/fourn/class/fournisseur.facture.class.php';
 require_once DOL_DOCUMENT_ROOT.'/compta/facture/class/paymentterm.class.php';
 require_once(DOL_DOCUMENT_ROOT.'/contrat/class/contrat.class.php');
 require_once(DOL_DOCUMENT_ROOT.'/core/class/discount.class.php');
@@ -66,7 +43,6 @@ $langs->load("swisspayments@swisspayments");
 // Get parameters
 $id = GETPOST('id', 'int');
 $action = GETPOST('action', 'showcodefield');
-$myparam = GETPOST('myparam', 'alpha');
 
 // Access control
 if ($user->societe_id > 0) {
@@ -531,7 +507,7 @@ if ($user->rights->fournisseur->facture->lire)
                     print '</td>';
                     print '<td rowspan="3" valign="top">';
                     print '<textarea name="comment" wrap="soft" cols="60" rows="'.ROWS_3.'">'.(empty($_POST['comment'])?'':$_POST['comment']).'</textarea></td></tr>';
-                    print '<tr><td>'.$langs->trans('Numero').'</td><td><input name="num_paiement" type="text" value="'.(empty($_POST['num_paiement'])?date('Y-m-d H:i'):$_POST['num_paiement']).'"></td></tr>';
+                    print '<tr><td>'.$langs->trans('Numero').'</td><td><input name="num_paiement" type="text" value="'.(empty($_POST['num_paiement'])?date('Y-m-d-H:i'):$_POST['num_paiement']).'"></td></tr>';
                     if (! empty($conf->banque->enabled))
                     {
                         print '<tr><td class="fieldrequired">'.$langs->trans('Account').'</td><td>';
