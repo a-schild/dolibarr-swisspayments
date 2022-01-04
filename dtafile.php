@@ -74,15 +74,23 @@ if (isset($_REQUEST["payh"]))
     $result= $payh->fetch($_REQUEST["payh"]);
     if ($result >= 0)
     {
-        $result= $payh->createDTA();
-        if ($result < 0)
+        try
         {
-            $error++;
-            setEventMessage($payh->error, 'errors');
+          $result= $payh->createDTA();
+          if ($result < 0)
+          {
+              $error++;
+              setEventMessage($payh->error, 'errors');
+          }
+          else
+          {
+              $dtaFile= $payh->dtafile;
+          }
         }
-        else
+        catch (Exception $e)
         {
-            $dtaFile= $payh->dtafile;
+              $error++;
+              setEventMessage($e, 'errors');
         }
     }
     else
