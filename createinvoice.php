@@ -552,12 +552,21 @@ if (!($facture && $facture->id > 0) && ($action == 'createesrid' || $action == '
 
   echo "<form method='post'>";
   echo '<input type="hidden" name="token" value="'.newToken().'">';
-  echo "ESR Codierzeile:";
+  echo "ESR Codierzeile:<br>";
   echo "<input type='text' width='30' name='codeline' id='codeline'>";
   echo "<input type='submit' value='Einlesen' >";
   echo "<input type='hidden' name='action' value='analyzecode' >";
   echo "</form>";
 
+  echo "<hr><form method='post'>";
+  echo '<input type="hidden" name="token" value="'.newToken().'">';
+  echo "QR Code<br>:";
+  echo "<textarea name='qrcode' id='qrcode'></textarea>";
+  echo "<input type='submit' value='Einlesen' >";
+  echo "<input type='hidden' name='action' value='analyzecode' >";
+  echo "</form>";
+
+  
   $actual_host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
   //$actual_host= "http://192.168.200.140";
 
