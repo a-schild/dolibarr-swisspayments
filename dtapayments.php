@@ -71,11 +71,6 @@ $search_company = GETPOST('search_company','alpha');
 $search_amount_no_tax = GETPOST('search_amount_no_tax','alpha');
 $search_amount_all_tax = GETPOST('search_amount_all_tax','alpha');
 
-$page = GETPOST("page",'int');
-if ($page == -1) { $page = 0; }
-$offset = $conf->liste_limit * $page;
-$pageprev = $page - 1;
-$pagenext = $page + 1;
 if (! $sortfield) $sortfield="f.date_lim_reglement";
 if (! $sortorder) $sortorder="ASC";
 
@@ -342,7 +337,7 @@ if ($user->rights->fournisseur->facture->lire)
 		$i = 0;
                 $form=new Form($db);
 		print '<form method="post" action="'.$_SERVER["PHP_SELF"].'" name="createDTA">';
-
+        print '<input type="hidden" name="token" value="'.newToken().'">';
 		print '<table class="liste" width="100%">';
 		print '<tr class="liste_titre">';
 		print_liste_field_titre($langs->trans("Ref"),$_SERVER["PHP_SELF"],"f.rowid","",$param,"",$sortfield,$sortorder);

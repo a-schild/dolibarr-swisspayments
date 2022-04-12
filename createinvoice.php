@@ -438,6 +438,7 @@ if (!($facture && $facture->id > 0) && ($action == 'createesrid' || $action == '
     }
   }
   echo "<form method='post' name='myform'>";
+  echo '<input type="hidden" name="token" value="'.newToken().'">';
   echo "<table>";
   if ($myobject->iban)
   {
@@ -550,6 +551,7 @@ if (!($facture && $facture->id > 0) && ($action == 'createesrid' || $action == '
   }
 
   echo "<form method='post'>";
+  echo '<input type="hidden" name="token" value="'.newToken().'">';
   echo "ESR Codierzeile:";
   echo "<input type='text' width='30' name='codeline' id='codeline'>";
   echo "<input type='submit' value='Einlesen' >";
