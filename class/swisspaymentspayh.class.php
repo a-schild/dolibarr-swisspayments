@@ -467,7 +467,7 @@ class Swisspaymentspayh extends CommonObject {
                 {
                     if (!isset($message)) 
                     {
-                        $message = new CustomerCreditTransfer($paiement->numero, $bank->proprio);
+                        $message = new CustomerCreditTransfer($this->payident, $bank->proprio);
                     }
                     $paymentOut = new PaymentInformation($paiement->ref, $bank->proprio, new BIC($bank->bic), new IBAN($bank->iban));
                     //new z38ChFile(sprintf('%05d', $this->id), $bank->code_banque);
@@ -575,7 +575,7 @@ class Swisspaymentspayh extends CommonObject {
                                 }
                                 else if ($isQRBILL)
                                 {
-                                  $iban= new IBAN($defaultRIB->iban);
+                                    $iban= new IBAN($defaultRIB->iban);
                                     $transaction = new BankCreditTransferWithQRR(
                                                 $paiement->id,
                                                 $paiement->ref,
