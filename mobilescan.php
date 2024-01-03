@@ -28,6 +28,7 @@ if (! $user->rights->swisspayments->invoices->create) accessforbidden();
   </head>
   <body>
       <form action="createinvoice.php" id="qrform" method="post">
+		  <input type="hidden" name="token" value="<?= newToken() ?>">
           <textarea id="qrcode" name="qrcode" style="display:none"></textarea>
           <input type="hidden" name="action" value="analyzecode">
       </form>
