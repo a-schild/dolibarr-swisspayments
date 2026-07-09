@@ -553,9 +553,31 @@ $renderInvoiceFields = function () use ($form, $societe, $myobject, $db) {
     if (!$isQrIban) print '<br><span class="opacitymedium">Keine QR-IBAN &ndash; QR-Referenz optional (SCOR/ohne Referenz)</span>';
     print '</td></tr>';
   }
-  // For QR bills the invoice number is the supplier's own number (entered by the user),
-  // not the QR reference - default to empty and keep whatever was typed on re-submit.
-  $billnrDefault = $myobject->isQRCode ? GETPOST('billnr', 'alphanohtml') : $myobject->billnr;
+  // For QR bills the invoice number is the supplier's own number, not the QR reference.
+  // Keep a valid value the user typed; otherwise (empty, or already used for this
+  // supplier) propose a bill number in yyyymmdd form, made unique with a -N suffix so it
+  // is never itself a duplicate.
+  $billnrDefault = $myobject->billnr;
+  if ($myobject->isQRCode) {
+    $sockid = (int) $societe->id;
+    $billnrTaken = function ($val) use ($db, $sockid) {
+      $val = trim((string) $val);
+      if ($sockid <= 0 || $val === '') return false;
+      $r = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . $sockid . " AND ref_supplier='" . $db->escape($val) . "'");
+      return ($r && $db->num_rows($r) > 0);
+    };
+    $typed = trim((string) GETPOST('billnr', 'alphanohtml'));
+    if ($typed !== '' && !$billnrTaken($typed)) {
+      $billnrDefault = $typed;
+    } else {
+      $billnrDefault = date('Ymd');
+      $suffix = 1;
+      while ($billnrTaken($billnrDefault)) {
+        $suffix++;
+        $billnrDefault = date('Ymd') . '-' . $suffix;
+      }
+    }
+  }
   print '<tr><td width="30%" class="fieldrequired">Rechnung Nr.</td><td>';
   print '<input type="text" name="billnr" id="billnr" value="' . dol_escape_htmltag($billnrDefault) . '"></td></tr>';
   print '<tr><td class="fieldrequired">Rechnungsdatum</td><td>';
