@@ -1,0 +1,8 @@
+# Paths excluded from the deployable module zip built by `git archive`
+# (see .github/workflows/release.yml). `export-ignore` only affects
+# `git archive`, not normal clones/checkouts, so these files stay in the repo.
+/.gitattributes  export-ignore
+/.github         export-ignore
+/CLAUDE.md       export-ignore
+/doc             export-ignore
+/tests           export-ignore
