@@ -659,16 +659,20 @@ if ($inReview) {
     }
   }
 
-  // Live validation of the editable QR reference (QRR): max 27 digits + modulo-10
-  // recursive check digit, mirroring isValidCheckDigit() / the payment-side gate.
+  // Live validation of the editable QR reference: a QRR (numeric, max 27 digits +
+  // modulo-10 recursive check digit) or a SCOR / ISO 11649 creditor reference (RF + two
+  // mod-97 check digits + reference). Mirrors what the payment side accepts.
   if ($myobject->isQRCode) {
     echo '<script type="text/javascript">
       function swpMod10(n){var t=[0,9,4,6,8,2,7,1,3,5],x=0;for(var i=0;i<n.length;i++){x=t[(x+parseInt(n.charAt(i),10))%10];}return (10-x)%10;}
+      function swpValidScor(v){var r=v.toUpperCase();if(!/^RF[0-9]{2}[A-Z0-9]{1,21}$/.test(r))return false;var a=r.substring(4)+r.substring(0,4),n="",i,c;for(i=0;i<a.length;i++){c=a.charAt(i);n+=/[0-9]/.test(c)?c:(c.charCodeAt(0)-55).toString();}var rem=0;for(i=0;i<n.length;i++){rem=(rem*10+parseInt(n.charAt(i),10))%97;}return rem===1;}
       function swpCheckQrref(){var e=document.getElementById("qrref");if(!e)return;var v=e.value.replace(/\s/g,"");var m=document.getElementById("qrref_msg");
         if(v===""){m.innerHTML="";e.style.backgroundColor="";return;}
-        var ok=/^[0-9]{1,27}$/.test(v)&&swpMod10(v.substring(0,v.length-1))===parseInt(v.charAt(v.length-1),10);
-        if(ok){m.innerHTML="<span style=\'color:green\'>✓ gültig ("+v.length+" Ziffern)</span>";e.style.backgroundColor="#e6ffe6";}
-        else{m.innerHTML="<span style=\'color:#cc0000\'>✗ ungültige QR-Referenz ("+v.length+" Ziffern, erwartet 27)</span>";e.style.backgroundColor="#ffe6e6";}
+        var ok,label;
+        if(/^RF/i.test(v)){ok=swpValidScor(v);label=ok?"✓ gültige SCOR-Referenz":"✗ ungültige SCOR-Referenz (RF...)";}
+        else{ok=/^[0-9]{1,27}$/.test(v)&&swpMod10(v.substring(0,v.length-1))===parseInt(v.charAt(v.length-1),10);label=ok?"✓ gültige QR-Referenz ("+v.length+" Ziffern)":"✗ ungültige QR-Referenz ("+v.length+" Ziffern, erwartet 27)";}
+        if(ok){m.innerHTML="<span style=\'color:green\'>"+label+"</span>";e.style.backgroundColor="#e6ffe6";}
+        else{m.innerHTML="<span style=\'color:#cc0000\'>"+label+"</span>";e.style.backgroundColor="#ffe6e6";}
       }
       jQuery(document).ready(function(){swpCheckQrref();});
     </script>';
