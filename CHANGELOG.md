@@ -5,6 +5,15 @@ All notable changes to the Dolibarr **Swisspayments** module are documented here
 The format is based on [Keep a Changelog](https://keepachangelog.com/); the module
 uses date‑based versions (`YYYY.M`).
 
+## [2026.07.1] – 2026-07-09
+
+### Added
+- Propose a `yyyymmdd` invoice number for QR bills when none is entered, made unique per
+  supplier (`yyyymmdd`, `yyyymmdd-2`, …), instead of leaving "Rechnung Nr." empty.
+- Warn on the review screen when a QR bill's IBAN is not the supplier's **default** bank
+  account, with a checkbox to make the scanned IBAN the default — so a multi-account
+  supplier is paid on the account the bill actually uses.
+
 ## [2026.07] – 2026-07-09
 
 Major update: migration to the current Swiss Payment Standards and a reworked

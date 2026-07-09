@@ -19,7 +19,7 @@ class modswisspayments extends DolibarrModules
 {
 
 	/** Current module version (single source of truth; bump on each release). */
-	const VERSION = '2026.07';
+	const VERSION = '2026.07.1';
 
 	/**
 	 * 	Constructor. Define names, constants, directories, boxes, permissions
