@@ -149,6 +149,10 @@ if ($result > 0) {
     if ($action == "createesrid")
     {
       $soc_id= $_POST["socid"];
+      // For QR bills the invoice number ("Rechnung Nr.") is exactly what the user typed;
+      // it must never be derived from the QR reference line (ESR findBillno logic). Apply
+      // it up front so the duplicate check and the created invoice both use it.
+      $myobject->setBillno($_POST["billnr"]);
       $sql= "select * from ".MAIN_DB_PREFIX."societe_rib where REPLACE(iban_prefix, ' ', '')='".$db->escape($myobject->iban)."' AND fk_soc=".$soc_id;
       $resql=$db->query($sql);
       if ($resql)
@@ -185,11 +189,7 @@ if ($result > 0) {
       $newESRSoc = new Swisspaymentssoc($db);
       if ($newESRSoc->fetch(null, null, null, null, $soc_id) > 0 && $newESRSoc->id) {
         dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
-        if ($_POST["billnr"]) {
-          $myobject->setBillno($_POST["billnr"]);
-        } else {
-          $myobject->findBillno($newESRSoc->startorderno, $newESRSoc->endorderno);
-        }
+        // Bill number already set from the form above.
       }
       else if ($_POST["billnr"])
       {
@@ -207,7 +207,9 @@ if ($result > 0) {
           $mesg = $newESRSoc->error;
           $error++;
         } else {
-          $myobject->findBillno($newESRSoc->startorderno, $newESRSoc->endorderno);
+          // Keep the invoice number the user entered; findBillno() would overwrite it
+          // with a slice of the QR reference (ESR position logic, wrong for QR bills).
+          $myobject->setBillno($_POST["billnr"]);
         }
       }
       
