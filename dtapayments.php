@@ -227,7 +227,7 @@ $companystatic=new Societe($db);
 
 if ($user->rights->fournisseur->facture->lire)
 {
-	$sql = "SELECT s.rowid as socid, s.nom as name,";
+	$sql = "SELECT s.rowid as socid, s.nom as name, s.zip, s.town,";
 	$sql.= " f.rowid, f.ref, f.ref_supplier, f.total_ht, f.total_ttc,";
 	$sql.= " f.datef as df, f.date_lim_reglement as datelimite, ";
 	$sql.= " f.paye as paye, f.rowid as facid, f.fk_statut";
@@ -413,12 +413,18 @@ if ($user->rights->fournisseur->facture->lire)
                                 $validQRIBAN= preg_match('/^(CH|LI)[0-9]{2}3/', $qrIban);
                                 if ($isQRBill)
                                 {
-                                    $canPay= $validQRR && $validQRIBAN;
+                                    $canPayInfo= $validQRR && $validQRIBAN;
                                 }
                                 else
                                 {
-                                    $canPay= !empty($objp->esrpartynr) || (!empty($objp->iban_prefix) && !empty($objp->bic));
+                                    $canPayInfo= !empty($objp->esrpartynr) || (!empty($objp->iban_prefix) && !empty($objp->bic));
                                 }
+                                // The creditor address is emitted as a structured address
+                                // (Swisspaymentspayh::createDTA / StructuredPostalAddress), which requires a
+                                // non-empty post code and town or createDTA throws and aborts the whole file.
+                                // Require them here so such a bill is flagged instead of breaking the export.
+                                $hasAddress= (trim((string) $objp->zip) !== '') && (trim((string) $objp->town) !== '');
+                                $canPay= $canPayInfo && $hasAddress;
                                 if (!$canPay)
                                 {
                                     $skipped_count++;
@@ -474,10 +480,16 @@ if ($user->rights->fournisseur->facture->lire)
                                     print "Ungültige oder fehlende QR-IBAN";
                                     print img_warning("The IBAN must be a QR-IBAN");
                                 }
-                                else
+                                else if (!$canPayInfo)
                                 {
                                     print "Zahlungsinformationen fehlen";
                                     print img_warning($langs->trans("ESR Zeile oder IBAN + BLZ"));
+                                }
+                                else
+                                {
+                                    // Payment info is fine but the structured address is incomplete.
+                                    print "Adressdaten unvollständig (PLZ/Ort)";
+                                    print img_warning("Postal code and town are required for the structured address");
                                 }
                                 print "</td>";
 

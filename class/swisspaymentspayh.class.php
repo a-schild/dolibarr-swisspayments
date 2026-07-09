@@ -449,10 +449,38 @@ class Swisspaymentspayh extends CommonObject {
         }
     }
 
+    /**
+     * Split a street line into street name and house number for the structured
+     * address (pain.001 BldgNb). Recognises a trailing house number such as
+     * "3", "4b", "10", "12-14" or "3/5". When no trailing number is found the
+     * whole line is returned as the street with a null building number.
+     *
+     * @param   string  $line   Street line (e.g. "Hintermättlistr. 3")
+     * @return  array           array(streetName, buildingNo|null)
+     */
+    private static function splitBuildingNo($line) {
+        $line = trim($line);
+        if (preg_match('/^(.+)\s+(\d+[a-zA-Z]?(?:[-\/]\d+[a-zA-Z]?)?)$/u', $line, $m)) {
+            return array(trim($m[1]), $m[2]);
+        }
+        return array($line, null);
+    }
+
     function createDTA() {
+        global $conf;
         if ($this->fetch_lines() >= 0) {
             $currentRow= 0;
-            
+
+            // pain.001 format selection: the bank (PostFinance) only accepts the
+            // new pain.001.001.09.ch.03 from the SPS 2026 go-live; before that only
+            // the old pain.001.001.03.ch.02 is accepted. Switch automatically on the
+            // cutover date. Override the date with the SWISSPAYMENTS_PAIN009_CUTOVER
+            // constant (format Y-m-d) once the bank confirms its exact switch date.
+            $cutover = !empty($conf->global->SWISSPAYMENTS_PAIN009_CUTOVER) ? $conf->global->SWISSPAYMENTS_PAIN009_CUTOVER : '2026-11-13';
+            $useNewPain = (time() >= strtotime($cutover));
+            $spsVersion = $useNewPain ? CustomerCreditTransfer::SPS_2022 : CustomerCreditTransfer::SPS_2021;
+            dol_syslog(__METHOD__ . " pain.001 format: " . ($useNewPain ? 'pain.001.001.09.ch.03 (SPS_2022)' : 'pain.001.001.03.ch.02 (SPS_2021)') . ", cutover " . $cutover, LOG_INFO);
+
             foreach ($this->lines as $payl) {
                 $currentRow++;
                 $paiement = new PaiementFourn($this->db);
@@ -467,11 +495,12 @@ class Swisspaymentspayh extends CommonObject {
                 {
                     if (!isset($message)) 
                     {
-                        // SPS_2022 => pain.001.001.09.ch.03 (mandatory from 2026-11-13).
+                        // SPS_2021 => pain.001.001.03.ch.02, SPS_2022 => pain.001.001.09.ch.03
+                        // (selected above based on the cutover date).
                         $message = new CustomerCreditTransfer(
                                     $this->payident,
                                     $bank->proprio,
-                                    CustomerCreditTransfer::SPS_2022,
+                                    $spsVersion,
                                     'Dolibarr Swisspayments',
                                     '8.*',
                                     'Aarboard AG'
@@ -571,14 +600,21 @@ class Swisspaymentspayh extends CommonObject {
 
                             if ($this->isISO20022)
                             {
-                                // pain.001.001.09.ch.03 (SPS 2022) requires a structured creditor
-                                // address (StrtNm/PstCd/TwnNm/Ctry). The house number may be carried
-                                // inside the street until further notice, so we pass the address line
-                                // as the street and leave the building number empty. Town + country are
-                                // mandatory; fall back to CH when no country is set on the third party.
+                                // Both formats carry a STRUCTURED creditor address (StrtNm/BldgNb/PstCd/
+                                // TwnNm/Ctry). The .03.ch.02 schema accepts it too, and PostFinance
+                                // recommends structured over the old AdrLine form (structured becomes
+                                // mandatory from Nov 2026). Split the trailing house number out of the
+                                // first address line into BldgNb (PostFinance recommends it) and keep any
+                                // extra address line inside the street name. Town + country are mandatory;
+                                // fall back to CH when the third party has no country set.
+                                list($strtNm, $bldgNb) = self::splitBuildingNo($rLine1);
+                                if (trim($rLine2) !== '')
+                                {
+                                    $strtNm = trim($strtNm . ' ' . trim($rLine2));
+                                }
                                 $creditorAddress = StructuredPostalAddress::sanitize(
-                                            trim($rLine1 . ' ' . $rLine2),
-                                            null,
+                                            $strtNm,
+                                            $bldgNb,
                                             $soc->zip,
                                             $soc->town,
                                             !empty($soc->country_code) ? $soc->country_code : 'CH'

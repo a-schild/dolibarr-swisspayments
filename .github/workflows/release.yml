@@ -1,0 +1,53 @@
+# Builds the minimal deployable Dolibarr module zip on every Git tag and
+# attaches it to the matching GitHub Release.
+#
+# The archive contains a single top-level `swisspayments/` folder (the module's
+# deploy name under Dolibarr's htdocs/custom/). Dev-only files are stripped via
+# .gitattributes `export-ignore` (CLAUDE.md, doc/, tests/, .github/), so the zip
+# is only what the running module needs.
+#
+# Install in Dolibarr: Home > Setup > Modules/Applications >
+# "Deploy/install external app", upload the zip (it extracts to
+# custom/swisspayments/), then enable the "Swisspayments" module.
+
+name: Build deployable module zip
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write   # required to create/update the GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@v4
+
+      - name: Build deployable module zip
+        run: |
+          MODULE=swisspayments
+          ZIP="${MODULE}-${GITHUB_REF_NAME}.zip"
+          # Archive the exact tagged tree; --prefix gives the required top folder,
+          # export-ignore (.gitattributes) drops the non-deployable files.
+          git archive --format=zip --prefix="${MODULE}/" -o "${ZIP}" HEAD
+          echo "ZIP=${ZIP}" >> "$GITHUB_ENV"
+          echo "Built ${ZIP}:"
+          unzip -l "${ZIP}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP }}
+          path: ${{ env.ZIP }}
+
+      - name: Attach zip to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${ZIP}" \
+            --title "${GITHUB_REF_NAME}" --generate-notes \
+          || gh release upload "${GITHUB_REF_NAME}" "${ZIP}" --clobber
