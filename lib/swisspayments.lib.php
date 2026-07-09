@@ -126,4 +126,31 @@ function isValidCheckDigit($fullString)
 function startsWith($fullstring, $startString) {
 	return !strncmp($fullstring, $startString, strlen($startString));
 }
+
+/**
+ * Validate a SCOR / ISO 11649 creditor reference: "RF" + two check digits + up to 21
+ * alphanumeric characters, with a valid mod-97 check digit (letters mapped A=10..Z=35,
+ * the "RF" + check digits moved to the end). Spaces are ignored.
+ *
+ * @param string $ref
+ * @return bool
+ */
+function isValidScor($ref) {
+	$ref = strtoupper(str_replace(' ', '', $ref));
+	if (!preg_match('/^RF[0-9]{2}[A-Z0-9]{1,21}$/', $ref)) {
+		return false;
+	}
+	$rearranged = substr($ref, 4) . substr($ref, 0, 4);
+	$numeric = '';
+	for ($i = 0; $i < strlen($rearranged); $i++) {
+		$c = $rearranged[$i];
+		$numeric .= ctype_digit($c) ? $c : (string) (ord($c) - 55);
+	}
+	// Compute mod 97 piecewise to avoid overflowing on the large number.
+	$remainder = 0;
+	for ($i = 0; $i < strlen($numeric); $i++) {
+		$remainder = ($remainder * 10 + (int) $numeric[$i]) % 97;
+	}
+	return $remainder === 1;
+}
 	

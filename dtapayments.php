@@ -410,7 +410,7 @@ if ($user->rights->fournisseur->facture->lire)
                                 $qrIban= strtoupper(str_replace(' ', '', (string) $objp->iban_prefix));
                                 $isQRIBAN= preg_match('/^(CH|LI)[0-9]{2}3/', $qrIban);
                                 $isChLiIban= preg_match('/^(CH|LI)[0-9]{2}/', $qrIban);
-                                $isScorRef= (strpos(strtoupper($esrline), 'RF') === 0);
+                                $isScorRef= isValidScor($esrline);   // RF + valid ISO 11649 mod-97 check digit
                                 $qrReason= '';   // '' => payable; otherwise a reason code for the message
                                 if ($isQRBill)
                                 {
