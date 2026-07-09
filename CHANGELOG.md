@@ -5,7 +5,7 @@ All notable changes to the Dolibarr **Swisspayments** module are documented here
 The format is based on [Keep a Changelog](https://keepachangelog.com/); the module
 uses date‑based versions (`YYYY.M`).
 
-## [2026.7] – 2026-07-09
+## [2026.07] – 2026-07-09
 
 Major update: migration to the current Swiss Payment Standards and a reworked
 QR‑bill import flow.
@@ -49,7 +49,7 @@ QR‑bill import flow.
 
 ## Earlier history (2021 – 2024)
 
-The module was not formally versioned before 2026.7 (it declared `8.*`). Notable
+The module was not formally versioned before 2026.07 (it declared `8.*`). Notable
 milestones:
 
 - **2024-01** – CSRF token added for the image‑upload case.
