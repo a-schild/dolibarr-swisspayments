@@ -33,9 +33,20 @@ supplier's invoice to producing an ISO 20022 payment file you upload to your ban
 - **PHP 8.0** or newer.
 - The module is deployed under Dolibarr's `htdocs/custom/` directory.
 
+## Download
+
+Ready‑to‑install module zips are published automatically on the
+[**Releases**](https://github.com/a-schild/dolibarr-swisspayments/releases) page —
+each tagged version has a `swisspayments-<version>.zip` asset built by GitHub Actions.
+Grab the latest release, or clone this repository to run the current development state.
+
+See the [changelog](CHANGELOG.md) for what changed between versions.
+
 ## Installation
 
-1. Download the release zip (`swisspayments-<version>.zip`) or clone this repository.
+1. Download the latest release zip (`swisspayments-<version>.zip`) from the
+   [Releases](https://github.com/a-schild/dolibarr-swisspayments/releases) page, or clone
+   this repository.
 2. Extract it into your Dolibarr `htdocs/custom/` directory so the files live under
    `htdocs/custom/swisspayments/`.
    - In the Dolibarr admin you can also use **Setup → Modules/Applications →
