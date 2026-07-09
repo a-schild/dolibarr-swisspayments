@@ -469,19 +469,13 @@ class Swisspaymentspayh extends CommonObject {
     }
 
     function createDTA() {
-        global $conf;
         if ($this->fetch_lines() >= 0) {
             $currentRow= 0;
 
-            // pain.001 format selection: the bank (PostFinance) only accepts the
-            // new pain.001.001.09.ch.03 from the SPS 2026 go-live; before that only
-            // the old pain.001.001.03.ch.02 is accepted. Switch automatically on the
-            // cutover date. Override the date with the SWISSPAYMENTS_PAIN009_CUTOVER
-            // constant (format Y-m-d) once the bank confirms its exact switch date.
-            $cutover = !empty($conf->global->SWISSPAYMENTS_PAIN009_CUTOVER) ? $conf->global->SWISSPAYMENTS_PAIN009_CUTOVER : '2026-11-13';
-            $useNewPain = (time() >= strtotime($cutover));
-            $spsVersion = $useNewPain ? CustomerCreditTransfer::SPS_2022 : CustomerCreditTransfer::SPS_2021;
-            dol_syslog(__METHOD__ . " pain.001 format: " . ($useNewPain ? 'pain.001.001.09.ch.03 (SPS_2022)' : 'pain.001.001.03.ch.02 (SPS_2021)') . ", cutover " . $cutover, LOG_INFO);
+            // Always emit the current Swiss Payment Standards format
+            // pain.001.001.09.ch.03 (SPS 2022). The library still supports SPS_2021
+            // (pain.001.001.03.ch.02) if an older format is ever needed again.
+            $spsVersion = CustomerCreditTransfer::SPS_2022;
 
             // Software version reported in the message header (CtctDtls); single source of
             // truth is the module descriptor's VERSION constant.
@@ -502,8 +496,7 @@ class Swisspaymentspayh extends CommonObject {
                 {
                     if (!isset($message)) 
                     {
-                        // SPS_2021 => pain.001.001.03.ch.02, SPS_2022 => pain.001.001.09.ch.03
-                        // (selected above based on the cutover date).
+                        // SPS_2022 => pain.001.001.09.ch.03
                         $message = new CustomerCreditTransfer(
                                     $this->payident,
                                     $bank->proprio,
