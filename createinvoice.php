@@ -407,6 +407,20 @@ if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
   }
 }
 
+// Validate/normalize the invoice amount before creating the invoice. Bills with a fixed
+// amount from the QR/ESR code keep it; open-amount bills require a positive numeric value
+// entered by the user (reject empty, zero, negative or non-numeric input). price2num()
+// accepts localized input like "1'234.50" or "1234,50".
+if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid") && !$myobject->hasAmount) {
+  $amount = price2num(GETPOST('amount', 'alpha'));
+  if (!is_numeric($amount) || $amount <= 0) {
+    setEventMessage("Bitte einen g&uuml;ltigen Betrag (gr&ouml;sser als 0) erfassen", 'errors');
+    $error++;
+  } else {
+    $myobject->amount = $amount;
+  }
+}
+
 if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid")) {
   $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
   if ($resql) {
@@ -587,7 +601,7 @@ if ($inReview) {
     print '<input type="hidden" name="socid" value="' . $societe->id . '">';
     if ($myobject->hasAmount) print '<input type="hidden" name="amount" value="' . dol_escape_htmltag($myobject->amount) . '">';
     print '<table class="border" width="100%">';
-    if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">Betrag</td><td><input type="text" name="amount"></td></tr>';
+    if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">Betrag</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
     print '<div class="center"><input type="submit" class="button" value="Rechnung erstellen"></div>';
@@ -604,7 +618,7 @@ if ($inReview) {
     print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('Supplier') . '</td><td>';
     print $form->select_company(GETPOST('socid', 'int'), 'socid', 's.fournisseur = 1', 1);
     print '</td></tr>';
-    if (!$myobject->hasAmount) print '<tr><td class="fieldrequired">Betrag</td><td><input type="text" name="amount"></td></tr>';
+    if (!$myobject->hasAmount) print '<tr><td class="fieldrequired">Betrag</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
     print '<div class="center"><input type="submit" class="button" value="Zuweisen &amp; Rechnung erstellen"></div>';
