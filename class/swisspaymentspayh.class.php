@@ -46,6 +46,7 @@ dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/StructuredPostalAdd
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/CreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/BankCreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/BankCreditTransferWithQRR.php');
+dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/BankCreditTransferWithCreditorReference.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/ForeignCreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/IS1CreditTransfer.php');
 dol_include_once('/custom/swisspayments/lib/Z38/SwissPayment/TransactionInformation/IS2CreditTransfer.php');
@@ -70,6 +71,7 @@ use Z38\SwissPayment\PostalAccount;
 use Z38\SwissPayment\StructuredPostalAddress;
 use Z38\SwissPayment\TransactionInformation\BankCreditTransfer;
 use Z38\SwissPayment\TransactionInformation\BankCreditTransferWithQRR;
+use Z38\SwissPayment\TransactionInformation\BankCreditTransferWithCreditorReference;
 use Z38\SwissPayment\TransactionInformation\ForeignCreditTransfer;
 use Z38\SwissPayment\TransactionInformation\IS1CreditTransfer;
 use Z38\SwissPayment\TransactionInformation\IS2CreditTransfer;
@@ -481,6 +483,11 @@ class Swisspaymentspayh extends CommonObject {
             $spsVersion = $useNewPain ? CustomerCreditTransfer::SPS_2022 : CustomerCreditTransfer::SPS_2021;
             dol_syslog(__METHOD__ . " pain.001 format: " . ($useNewPain ? 'pain.001.001.09.ch.03 (SPS_2022)' : 'pain.001.001.03.ch.02 (SPS_2021)') . ", cutover " . $cutover, LOG_INFO);
 
+            // Software version reported in the message header (CtctDtls); single source of
+            // truth is the module descriptor's VERSION constant.
+            dol_include_once('/custom/swisspayments/core/modules/modSwisspayments.class.php');
+            $moduleVersion = class_exists('modswisspayments') ? modswisspayments::VERSION : '';
+
             foreach ($this->lines as $payl) {
                 $currentRow++;
                 $paiement = new PaiementFourn($this->db);
@@ -502,7 +509,7 @@ class Swisspaymentspayh extends CommonObject {
                                     $bank->proprio,
                                     $spsVersion,
                                     'Dolibarr Swisspayments',
-                                    '8.*',
+                                    $moduleVersion,
                                     'Aarboard AG'
                                 );
                     }
@@ -604,14 +611,10 @@ class Swisspaymentspayh extends CommonObject {
                                 // TwnNm/Ctry). The .03.ch.02 schema accepts it too, and PostFinance
                                 // recommends structured over the old AdrLine form (structured becomes
                                 // mandatory from Nov 2026). Split the trailing house number out of the
-                                // first address line into BldgNb (PostFinance recommends it) and keep any
-                                // extra address line inside the street name. Town + country are mandatory;
-                                // fall back to CH when the third party has no country set.
-                                list($strtNm, $bldgNb) = self::splitBuildingNo($rLine1);
-                                if (trim($rLine2) !== '')
-                                {
-                                    $strtNm = trim($strtNm . ' ' . trim($rLine2));
-                                }
+                                // whole street (all address lines combined - the number is often on the
+                                // last line) into BldgNb, which the standard recommends. Town + country
+                                // are mandatory; fall back to CH when the third party has no country set.
+                                list($strtNm, $bldgNb) = self::splitBuildingNo(trim($rLine1 . ' ' . $rLine2));
                                 $creditorAddress = StructuredPostalAddress::sanitize(
                                             $strtNm,
                                             $bldgNb,
@@ -630,18 +633,40 @@ class Swisspaymentspayh extends CommonObject {
                                 }
                                 else if ($isQRBILL)
                                 {
+                                    // A Swiss QR-bill comes in three variants, distinguished by the
+                                    // creditor account and reference:
+                                    //  - QR-IBAN + QR reference (QRR, numeric)      -> BankCreditTransferWithQRR
+                                    //  - normal IBAN + Creditor Reference (SCOR/RF) -> BankCreditTransferWithCreditorReference
+                                    //  - normal IBAN + no reference (NON)           -> plain BankCreditTransfer
+                                    // The creditor agent (IID) is derived from the CH/LI IBAN in all cases.
                                     $iban= new IBAN($defaultRIB->iban);
-                                    $transaction = new BankCreditTransferWithQRR(
-                                                $paiement->id,
-                                                $paiement->ref,
-                                                new Money\CHF(round(floatval($paiement->montant)*100.0)),
-                                                $soc->name,
-                                                $creditorAddress,
-                                                $iban,
-                                                IID::fromIBAN($iban), /* Not needed for QRR */
-                                                $factf->esrline
-                                            );
-                                    //$transaction->setRemittanceInformation($fact->esrrefnr);
+                                    $qrRef= trim((string) $factf->esrline);
+                                    $amountCHF= new Money\CHF(round(floatval($paiement->montant)*100.0));
+                                    $isQrIban= (bool) preg_match('/^(CH|LI)[0-9]{2}3/', $iban->normalize());
+                                    if ($isQrIban)
+                                    {
+                                        $transaction = new BankCreditTransferWithQRR(
+                                                $paiement->id, $paiement->ref, $amountCHF,
+                                                $soc->name, $creditorAddress, $iban,
+                                                IID::fromIBAN($iban), $qrRef);
+                                    }
+                                    else if (preg_match('/^RF/i', str_replace(' ', '', $qrRef)))
+                                    {
+                                        $transaction = new BankCreditTransferWithCreditorReference(
+                                                $paiement->id, $paiement->ref, $amountCHF,
+                                                $soc->name, $creditorAddress, $iban,
+                                                IID::fromIBAN($iban), $qrRef);
+                                    }
+                                    else
+                                    {
+                                        // Normal IBAN, no reference (NON): plain IBAN transfer, use the
+                                        // supplier invoice number as unstructured remittance information.
+                                        $transaction = new BankCreditTransfer(
+                                                $paiement->id, $paiement->ref, $amountCHF,
+                                                $soc->name, $creditorAddress, $iban,
+                                                IID::fromIBAN($iban));
+                                        $transaction->setRemittanceInformation($fact->ref_supplier);
+                                    }
                                 }
                                 else
                                 {

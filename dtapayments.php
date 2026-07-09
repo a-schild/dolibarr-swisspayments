@@ -396,24 +396,28 @@ if ($user->rights->fournisseur->facture->lire)
 				$objp = $db->fetch_object($resql);
                                 // dol_syslog(var_export($objp, true));
 
-                                // A QR-bill is paid as a QRR transaction (see Swisspaymentspayh::createDTA /
-                                // BankCreditTransferWithQRR). That constructor imposes two preconditions,
-                                // both of which abort DTA file generation when unmet:
-                                //  1. the QR reference (esrline) must be numeric (max 27 digits) with a
-                                //     valid modulo-10 check digit ("QR reference is invalid"), and
-                                //  2. the creditor IBAN (default RIB) must be a QR-IBAN, i.e. a CH/LI
-                                //     account with '3' at position 5 ("The IBAN must be a QR-IBAN"); a
-                                //     missing default RIB fails the same way via new IBAN('').
-                                // Validate both here so such bills are flagged as not payable instead of
-                                // breaking the file export.
+                                // A QR-bill is paid according to its creditor account + reference (see
+                                // Swisspaymentspayh::createDTA). Mirror what that will accept so a bill is
+                                // flagged here instead of aborting the file export:
+                                //  - QR-IBAN (CH/LI, '3' at pos 5)  -> requires a valid QRR (numeric, <=27
+                                //    digits, modulo-10 check digit) [BankCreditTransferWithQRR]
+                                //  - normal CH/LI IBAN + SCOR (RF..) -> [BankCreditTransferWithCreditorReference]
+                                //  - normal CH/LI IBAN + no reference -> plain [BankCreditTransfer]
+                                // The creditor agent (IID) is derived from the IBAN, so a CH/LI IBAN is required.
                                 $isQRBill= ($objp->esrpartynr == "QRBILL");
                                 $esrline= trim((string) $objp->esrline);
                                 $validQRR= preg_match('/^[0-9]{1,27}$/', $esrline) && isValidCheckDigit($esrline);
                                 $qrIban= strtoupper(str_replace(' ', '', (string) $objp->iban_prefix));
-                                $validQRIBAN= preg_match('/^(CH|LI)[0-9]{2}3/', $qrIban);
+                                $isQRIBAN= preg_match('/^(CH|LI)[0-9]{2}3/', $qrIban);
+                                $isChLiIban= preg_match('/^(CH|LI)[0-9]{2}/', $qrIban);
+                                $isScorRef= (strpos(strtoupper($esrline), 'RF') === 0);
+                                $qrReason= '';   // '' => payable; otherwise a reason code for the message
                                 if ($isQRBill)
                                 {
-                                    $canPayInfo= $validQRR && $validQRIBAN;
+                                    if (!$isChLiIban)      $qrReason= 'noiban';   // no CH/LI creditor IBAN
+                                    else if ($isQRIBAN)   { if (!$validQRR) $qrReason= 'qrr'; }   // QR-IBAN needs QRR
+                                    else if (!($isScorRef || $esrline === '')) $qrReason= 'ref';  // normal IBAN: SCOR or none
+                                    $canPayInfo= ($qrReason === '');
                                 }
                                 else
                                 {
@@ -470,15 +474,20 @@ if ($user->rights->fournisseur->facture->lire)
                                     print "<input type='text' value=\"".price($objp->stilltopay)."\" name='amount_" . $objp->facid . "' size='8'>";
                                     print "<input type='hidden' name='socid_" . $objp->facid ."' value='". $objp->socid."' >";
                                 }
-                                else if ($isQRBill && !$validQRR)
+                                else if ($isQRBill && $qrReason == 'qrr')
                                 {
                                     print "Ungültige QR-Referenz";
                                     print img_warning("QR reference is invalid");
                                 }
-                                else if ($isQRBill && !$validQRIBAN)
+                                else if ($isQRBill && $qrReason == 'noiban')
                                 {
-                                    print "Ungültige oder fehlende QR-IBAN";
-                                    print img_warning("The IBAN must be a QR-IBAN");
+                                    print "Ungültige oder fehlende IBAN";
+                                    print img_warning("A valid CH/LI creditor IBAN is required");
+                                }
+                                else if ($isQRBill && $qrReason == 'ref')
+                                {
+                                    print "Ungültige Referenz für diese IBAN";
+                                    print img_warning("A normal IBAN needs a SCOR (RF) reference or none");
                                 }
                                 else if (!$canPayInfo)
                                 {

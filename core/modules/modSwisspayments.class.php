@@ -18,6 +18,9 @@ include_once DOL_DOCUMENT_ROOT . "/core/modules/DolibarrModules.class.php";
 class modswisspayments extends DolibarrModules
 {
 
+	/** Current module version (single source of truth; bump on each release). */
+	const VERSION = '2026.7';
+
 	/**
 	 * 	Constructor. Define names, constants, directories, boxes, permissions
 	 *
@@ -48,7 +51,7 @@ class modswisspayments extends DolibarrModules
 		// (where XXX is value of numeric property 'numero' of module)
 		$this->description = "Managing of swiss payments via ESR / DTA";
 		// Possible values for version are: 'development', 'experimental' or version
-		$this->version = '8.*';
+		$this->version = self::VERSION;
 		// Key used in llx_const table to save module status enabled/disabled
 		// (where MYMODULE is value of property name of module in uppercase)
 		$this->const_name = 'MAIN_MODULE_' . strtoupper($this->name);
