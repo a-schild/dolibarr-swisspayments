@@ -185,7 +185,15 @@ if ($result > 0) {
           }
       }
       $db->free($resql);
-  
+
+      // The payment file is generated for the supplier's DEFAULT bank account. When the
+      // user opted in, make the scanned IBAN (whose RIB was just ensured above) the
+      // default, so a multi-account supplier is paid on the account this bill uses.
+      if (GETPOST('set_default_iban', 'int') && $myobject->iban) {
+        $db->query("UPDATE " . MAIN_DB_PREFIX . "societe_rib SET default_rib=0 WHERE fk_soc=" . ((int) $soc_id));
+        $db->query("UPDATE " . MAIN_DB_PREFIX . "societe_rib SET default_rib=1 WHERE fk_soc=" . ((int) $soc_id) . " AND REPLACE(iban_prefix, ' ', '')='" . $db->escape($myobject->iban) . "'");
+      }
+
       $newESRSoc = new Swisspaymentssoc($db);
       if ($newESRSoc->fetch(null, null, null, null, $soc_id) > 0 && $newESRSoc->id) {
         dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
@@ -635,6 +643,21 @@ if ($inReview) {
     print '<input type="hidden" name="socid" value="' . $societe->id . '">';
     if ($myobject->hasAmount) print '<input type="hidden" name="amount" value="' . dol_escape_htmltag($myobject->amount) . '">';
     print '<table class="border" width="100%">';
+    // Warn when this bill's IBAN is not the supplier's default bank account: the payment
+    // file uses the default account, so paying this bill would go to the wrong IBAN.
+    // Offer to make the scanned IBAN the default (checked by default).
+    $scannedIban = strtoupper(str_replace(' ', '', (string) $myobject->iban));
+    if ($scannedIban !== '') {
+      $defaultRibIban = '';
+      $rqDef = $db->query("SELECT iban_prefix FROM " . MAIN_DB_PREFIX . "societe_rib WHERE fk_soc=" . ((int) $societe->id) . " AND default_rib=1");
+      if ($rqDef && $db->num_rows($rqDef) > 0) { $oDef = $db->fetch_object($rqDef); $defaultRibIban = strtoupper(str_replace(' ', '', (string) $oDef->iban_prefix)); }
+      if ($defaultRibIban !== '' && $defaultRibIban !== $scannedIban) {
+        print '<tr><td width="30%">Standard-Konto</td><td>';
+        print img_warning() . ' Die IBAN dieser Rechnung (' . dol_escape_htmltag($myobject->iban) . ') ist nicht das Standard-Bankkonto des Lieferanten (' . dol_escape_htmltag($defaultRibIban) . '). Die Zahlung erfolgt sonst an das Standard-Konto.<br>';
+        print '<label><input type="checkbox" name="set_default_iban" value="1" checked> Gescannte IBAN als Standard-Bankkonto setzen</label>';
+        print '</td></tr>';
+      }
+    }
     if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">Betrag</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
