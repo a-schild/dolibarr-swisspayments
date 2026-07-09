@@ -37,7 +37,15 @@ class SwisspaymentsClass // extends CommonObject
   public $billnr;     // The bill Nr.
   public $esrID;      // The ESR ID part (000000 for PC account)
   public $payToName;
-  public $payToAddress;
+  public $payToAddress;       // Combined address string (kept for the bank account label)
+  // Structured creditor address parsed from the QR-bill (used to pre-fill a new supplier)
+  public $payToAddressType;   // 'S' = structured, 'K' = combined
+  public $payToStreet;        // Street name (QR line 6)
+  public $payToBuildingNo;    // Building number (QR line 7, structured only)
+  public $payToAddressLine2;  // Second address line (QR line 7, combined only)
+  public $payToPostcode;      // Post code (QR line 8, structured)
+  public $payToTown;          // Town (QR line 9, structured)
+  public $payToCountry;       // Country ISO code (QR line 10)
 
   /**
    * Constructor
@@ -137,7 +145,10 @@ class SwisspaymentsClass // extends CommonObject
     {
       // Strip CR from QR code (PHP_EOL won't work here)
       $qr_lines = explode("\n", str_replace("\r", "", $this->codeline));
-      if (count($qr_lines) == 32)
+      // The mandatory trailer "EPD" is at index 30; the billing information and up to
+      // two alternative-procedure fields after it are optional, so a valid Swiss QR-bill
+      // has between 31 (no billing info) and 34 lines. Everything we read is at index <=30.
+      if (count($qr_lines) >= 31)
       {
         // Correct number of lines
         if ($qr_lines[0] == "SPC" && $qr_lines[1] == "0200" && $qr_lines[2] == "1" && $qr_lines[30] == "EPD")
@@ -163,10 +174,16 @@ class SwisspaymentsClass // extends CommonObject
               }
               $this->payToName= $qr_lines["5"];
               $this->payToAddress= $qr_lines["6"];
+              $this->payToAddressType= $qr_lines["4"];
+              $this->payToStreet= $qr_lines["6"];
+              $this->payToCountry= (strlen($qr_lines["10"]) > 0) ? $qr_lines["10"] : "CH";
               if ($qr_lines["4"] == "S")
               {
                 // Strukturierte Adresse, Hausnummer separat
-                if ($qr_lines["7"] <> "0")
+                $this->payToBuildingNo= ($qr_lines["7"] <> "0" && $qr_lines["7"] <> "") ? $qr_lines["7"] : "";
+                $this->payToPostcode= $qr_lines["8"];
+                $this->payToTown= $qr_lines["9"];
+                if ($this->payToBuildingNo <> "")
                 {
                   $this->payToAddress.= " ".$qr_lines["7"];
                 }
@@ -174,7 +191,18 @@ class SwisspaymentsClass // extends CommonObject
               }
               else
               {
-                // Nicht strukturiert= Zeile 2
+                // Nicht strukturiert = Zeile 2. Post code / town are not delivered
+                // separately; try to split them out of the second line ("1234 Town")
+                // so the new-supplier form can still be pre-filled.
+                if (preg_match('/^\s*([0-9]{4,10})\s+(.+)$/', $qr_lines["7"], $mm))
+                {
+                  $this->payToPostcode= $mm[1];
+                  $this->payToTown= trim($mm[2]);
+                }
+                else
+                {
+                  $this->payToAddressLine2= $qr_lines["7"];
+                }
                 $this->payToAddress.= PHP_EOL.$qr_lines["7"];
                 $this->payToAddress.= PHP_EOL.$qr_lines["8"]." ".$qr_lines["9"];
               }
@@ -209,7 +237,7 @@ class SwisspaymentsClass // extends CommonObject
       else
       {
           $errmsg = "Invalid number of data lines in QR code. ".
-                    "Expecting 32, got ".count($qr_lines);
+                    "Expecting at least 31, got ".count($qr_lines);
           $error++;
           dol_syslog(__METHOD__ . " " . $errmsg, LOG_WARNING);
           $this->error = $errmsg;

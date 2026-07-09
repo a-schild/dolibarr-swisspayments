@@ -53,6 +53,12 @@ if (($id > 0 || !empty($ref)) && $action != 'add') {
   }
 }
 
+// Always have a (possibly empty) supplier object so the view can test $societe->id.
+$societe = new Societe($db);
+$error = 0;
+$warn = 0;
+$mesg = '';
+
 /*
  * ACTIONS
  *
@@ -87,7 +93,7 @@ if ($result > 0) {
   if ($myobject->isESR) {
     // ESR stuff
     if ($newESRSoc->fetch(null, null, $myobject->pcAccount, $myobject->esrID) > 0 && $newESRSoc->id) {
-      $mesg = "Found entry, assign";
+      dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
       $societe = new Societe($db);
       $result = $societe->fetch($newESRSoc->fk_societe);
       if ($result < 0) {
@@ -115,15 +121,19 @@ if ($result > 0) {
       }
     }
     else {
-      $mesg = "Not found, create?";
+      dol_syslog(__METHOD__ . " no matching supplier entry found", LOG_DEBUG);
       if ($societe->id != 0) {
         $newESRSoc = new Swisspaymentssoc($db);
         $newESRSoc->fk_societe = $societe->id;
         $newESRSoc->esrid = $_POST["esrid"];
         $newESRSoc->clientno = $_POST["clientno"];
         $newESRSoc->pcaccount = $_POST["pcAccount"];
-        $newESRSoc->startorderno = strpos($myobject->refLine, $_POST["billnr"]);
-        $newESRSoc->endorderno = $newESRSoc->startorderno + strlen($_POST["billnr"]);
+        // startorderno/endorderno mark where the bill number sits inside the reference
+        // (legacy ESR logic). For QR bills the bill number is not part of the reference,
+        // so strpos() often returns false - coerce to 0 to avoid an invalid INT insert.
+        $startPos = strpos((string) $myobject->refLine, (string) $_POST["billnr"]);
+        $newESRSoc->startorderno = ($startPos === false) ? 0 : $startPos;
+        $newESRSoc->endorderno = $newESRSoc->startorderno + strlen((string) $_POST["billnr"]);
         $result = $newESRSoc->create($user);
         if ($result < 0) {
           $mesg = $newESRSoc->error;
@@ -174,7 +184,7 @@ if ($result > 0) {
   
       $newESRSoc = new Swisspaymentssoc($db);
       if ($newESRSoc->fetch(null, null, null, null, $soc_id) > 0 && $newESRSoc->id) {
-        $mesg = "Found entry, assign";
+        dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
         if ($_POST["billnr"]) {
           $myobject->setBillno($_POST["billnr"]);
         } else {
@@ -186,8 +196,12 @@ if ($result > 0) {
         $newESRSoc = new Swisspaymentssoc($db);
         $newESRSoc->fk_societe = $societe->id;
         $newESRSoc->esrid = "QRBILL";
-        $newESRSoc->startorderno = strpos($myobject->refLine, $_POST["billnr"]);
-        $newESRSoc->endorderno = $newESRSoc->startorderno + strlen($_POST["billnr"]);
+        // startorderno/endorderno mark where the bill number sits inside the reference
+        // (legacy ESR logic). For QR bills the bill number is not part of the reference,
+        // so strpos() often returns false - coerce to 0 to avoid an invalid INT insert.
+        $startPos = strpos((string) $myobject->refLine, (string) $_POST["billnr"]);
+        $newESRSoc->startorderno = ($startPos === false) ? 0 : $startPos;
+        $newESRSoc->endorderno = $newESRSoc->startorderno + strlen((string) $_POST["billnr"]);
         $result = $newESRSoc->create($user);
         if ($result < 0) {
           $mesg = $newESRSoc->error;
@@ -217,7 +231,7 @@ if ($result > 0) {
                   $db->query($sql_upd);
                 }
 
-                $mesg = "Found entry, assign";
+                dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
                 $societe = new Societe($db);
                 $result = $societe->fetch($fk_societe);
                 
@@ -234,17 +248,17 @@ if ($result > 0) {
             }
             else if ($db->num_rows($resql) > 1)
             {
-              echo "<div>Multiple accounts found with the same iban number (".$db->num_rows($resql).")</div>";
+              setEventMessage("Mehrere Konten mit gleicher IBAN gefunden (".$db->num_rows($resql)."). Bitte Lieferant manuell zuweisen.", 'warnings');
             }
             else
             {
-              echo "<div>No account found with this iban number (".$myobject->iban.")</div>";
+              dol_syslog(__METHOD__ . " No supplier account found for IBAN " . $myobject->iban, LOG_INFO);
             }
             $db->free($resql);
         }
         else
         {
-            echo "<div class='error'>Database error ".$db->lasterror()."</div>";
+            setEventMessage("Datenbankfehler: ".$db->lasterror(), 'errors');
         }
       
     }
@@ -270,7 +284,7 @@ if ($result > 0) {
                   $db->query($sql_upd);
                 }
 
-                $mesg = "Found entry, assign";
+                dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
                 $societe = new Societe($db);
                 $result = $societe->fetch($fk_societe);
                 
@@ -309,27 +323,87 @@ if ($result > 0) {
             }
             else if ($db->num_rows($resql) > 1)
             {
-              echo "<div>Multiple accounts found with the same iban number (".$db->num_rows($resql).")</div>";
+              setEventMessage("Mehrere Konten mit gleicher IBAN gefunden (".$db->num_rows($resql)."). Bitte Lieferant manuell zuweisen.", 'warnings');
             }
             else
             {
-              echo "<div>No account found with this iban number (".$myobject->iban.")</div>";
+              dol_syslog(__METHOD__ . " No supplier account found for IBAN " . $myobject->iban, LOG_INFO);
             }
             $db->free($resql);
         }
         else
         {
-            echo "<div class='error'>Database error ".$db->lasterror()."</div>";
+            setEventMessage("Datenbankfehler: ".$db->lasterror(), 'errors');
         }
     }
   }
 } else {
-  // Creation NOT OK
-  if ($_POST["codeline"]) {
+  // Parse failed. Show the error when something was actually submitted (QR textarea
+  // or the carried-over codeline); stay silent on the first, empty page load.
+  if (!empty($_POST["codeline"]) || !empty($_POST["qrcode"])) {
     $mesg = $myobject->error;
     $error++;
+  }
+}
+
+// Create a brand new supplier from the reviewed QR-bill data (name + structured
+// address + IBAN). Only for QR bills; the form pre-fills these fields from the QR.
+if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
+  $newName = trim(GETPOST('new_name', 'alphanohtml'));
+  $newZip = trim(GETPOST('new_zip', 'alphanohtml'));
+  $newTown = trim(GETPOST('new_town', 'alphanohtml'));
+  if ($newName == '') {
+    setEventMessage($langs->trans('ErrorFieldRequired', $langs->transnoentities('Name')), 'errors');
+    $error++;
+  } else if ($newZip == '' || $newTown == '') {
+    // Post code + town are mandatory for the structured pain.001 address.
+    setEventMessage("PLZ und Ort sind erforderlich (strukturierte Adresse)", 'errors');
+    $error++;
   } else {
-    // No codeline, 1. call?
+    $db->begin();
+    $newSoc = new Societe($db);
+    $newSoc->name = $newName;
+    $newSoc->address = trim(GETPOST('new_street', 'alphanohtml'));
+    $newSoc->zip = $newZip;
+    $newSoc->town = $newTown;
+    $ccode = trim(GETPOST('new_country', 'alpha'));
+    if ($ccode == '') $ccode = 'CH';
+    $newSoc->country_code = $ccode;
+    $rqc = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "c_country WHERE code='" . $db->escape($ccode) . "'");
+    if ($rqc && $db->num_rows($rqc) > 0) {
+      $oc = $db->fetch_object($rqc);
+      $newSoc->country_id = $oc->rowid;
+    }
+    $newSoc->fournisseur = 1;
+    $newSoc->client = 0;
+    if ($newSoc->create($user) < 0) {
+      $error++;
+      setEventMessage($newSoc->error ? $newSoc->error : implode(', ', $newSoc->errors), 'errors');
+      $db->rollback();
+    } else {
+      // Attach the QR IBAN as the supplier's default bank account.
+      $cba = new CompanyBankAccount($db);
+      $cba->socid = $newSoc->id;
+      $cba->type = "ban";
+      $cba->label = "QR Bill";
+      $cba->bank = "QR Bill";
+      $cba->iban = $myobject->iban;
+      $cba->proprio = $myobject->payToName;
+      $cba->owner_address = $myobject->payToAddress;
+      $cba->default_rib = 1;
+      if ($cba->create($user, 0) < 0) {
+        $error++;
+        setEventMessage($cba->error, 'errors');
+        $db->rollback();
+      } else {
+        $cba->update($user);
+        $db->commit();
+        $societe = $newSoc;
+        // Continue in the "known supplier" flow so the invoice fields are shown.
+        $action = 'analyzecode';
+        setEventMessage("Lieferant '" . $newSoc->name . "' wurde angelegt", 'mesgs');
+      }
+    }
   }
 }
 
@@ -373,7 +447,10 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
         $factESR->fk_factid = $facture->id;
         if ($myobject->isQRCode)
         {
-          $factESR->esrline = $myobject->refLine;
+          // Use the (possibly corrected) QR reference from the review form; fall back
+          // to the scanned value. This is stored as esrline and paid as the QRR.
+          $qrref = str_replace(' ', '', trim(GETPOST('qrref', 'alphanohtml')));
+          $factESR->esrline = ($qrref != '') ? $qrref : $myobject->refLine;
         }
         else
         {
@@ -419,166 +496,181 @@ echo "<h1>Lieferantenrechnung erfassen</h1>";
 
 $form = new Form($db);
 
-if (!($facture && $facture->id > 0) && ($action == 'createesrid' || $action == 'analyzecode')) {
-  if ($societe->id == 0) {
-    if ($myobject->isESR) {
-      echo "<h2>Unbekannter ESR Teilnehmer</h2>";
-    } else if ($myobject->isQRCode) {
-      echo "<h2>Unbekannter QR Bill Teilnehmer</h2>";
-    } else {
-      echo "<h2>Unbekannter IBAN Teilnehmer</h2>";
-    }
-  } else {
-    if ($myobject->isESR) {
-      echo "<h2>Bekannter ESR Teilnehmer</h2>";
-    } else if ($myobject->isQRCode) {
-      echo "<h2>Unbekannter QR Bill Teilnehmer</h2>";
-    } else {
-      echo "<h2>Bekannter IBAN Teilnehmer</h2>";
-    }
-  }
-  echo "<form method='post' name='myform'>";
-  echo '<input type="hidden" name="token" value="'.newToken().'">';
-  echo "<table>";
-  if ($myobject->iban)
-  {
-    echo "<tr><td>IBAN:</td><td>" . $myobject->iban . "</td></tr>";
-  }
-  else
-  {
-    echo "<tr><td>PC Konto:</td><td>" . $myobject->pcAccount . "</td></tr>";
-    echo "<tr><td>ESR ID:</td><td>" . $myobject->esrID . "</td></tr>";
-  }
-  if ($myobject->hasAmount) {
-    echo "<tr><td>Betrag:</td><td>" . price($myobject->amount) . "</td></tr>";
-  } else {
-    echo "<tr><td>Betrag:</td><td><input type='text' name='amount' ></td></tr>";
-  }
-  // Third party
-  print '<tr><td class="fieldrequired">' . $langs->trans('Supplier') . '</td>';
-  print '<td>';
+// Only show the review step when we actually parsed a usable payment (IBAN or PC account);
+// a failed parse falls back to the entry step with the error message.
+$parsedOk = (!empty($myobject->iban) || !empty($myobject->pcAccount));
+$inReview = !($facture && $facture->id > 0) && $parsedOk && ($action == 'createesrid' || $action == 'analyzecode' || $action == 'createsupplier');
 
-  if ($societe->id != 0) {
-    print $societe->getNomUrl(1);
-    print '<input type="hidden" name="socid" value="' . $societe->id . '">';
-  } else {
-    print $form->select_company(GETPOST('socid', 'int'), 'socid', 's.fournisseur = 1', 1);
-  }
-  print '</td></tr>';
-  if ($societe->id != 0) {
-    print '<tr><td class="fieldrequired">Rechnung Nr.</td><td>';
-    print '<input type="text" name="billnr" id="billnr" value="' . $myobject->billnr . '">';
+// Wizard step indicator
+$step = $inReview ? 2 : 1;
+echo '<div style="margin:0 0 14px 0;font-size:1.05em;">';
+echo ($step == 1 ? '<strong>&#10148; 1. QR-Code einlesen</strong>' : '<span style="opacity:.6">1. QR-Code einlesen</span>');
+echo ' &nbsp;&rarr;&nbsp; ';
+echo ($step == 2 ? '<strong>&#10148; 2. Lieferant &amp; Rechnung</strong>' : '<span style="opacity:.6">2. Lieferant &amp; Rechnung</span>');
+echo '</div>';
+
+// Central message display (setEventMessage entries are shown by the framework itself).
+if ($error > 0 && !empty($mesg)) {
+  echo dol_htmloutput_errors($mesg);
+} else if ($warn > 0 && !empty($mesg)) {
+  echo dol_htmloutput_mesg($mesg, null, 'warning');
+}
+
+// Renders the shared invoice detail fields (QR ref, bill nr, dates, release) inside a table.
+$renderInvoiceFields = function () use ($form, $societe, $myobject, $db) {
+  if ($myobject->isQRCode) {
+    // Editable QR reference (stored as esrline; the QRR sent to the bank). Pre-filled
+    // from the scan so a bad scan can be corrected here. Validated live in JS below.
+    // A QRR is only mandatory with a QR-IBAN (CH/LI, '3' at position 5); a QR-bill on a
+    // normal IBAN legitimately has no QRR (reference type SCOR or NON), so don't require it.
+    $isQrIban = preg_match('/^(CH|LI)[0-9]{2}3/', strtoupper(str_replace(' ', '', (string) $myobject->iban)));
+    print '<tr><td width="30%" class="' . ($isQrIban ? 'fieldrequired' : '') . '">QR-Referenz</td><td>';
+    print '<input type="text" name="qrref" id="qrref" size="35" value="' . dol_escape_htmltag($myobject->refLine) . '" onkeyup="swpCheckQrref()" onchange="swpCheckQrref()"> ';
+    print '<span id="qrref_msg"></span>';
+    if (!$isQrIban) print '<br><span class="opacitymedium">Keine QR-IBAN &ndash; QR-Referenz optional (SCOR/ohne Referenz)</span>';
     print '</td></tr>';
-  } else {
-    print '<tr><td>Codezeile</td><td>Rechnungnummer markieren, inkl. f&uuml;hrende Nullen<br><pre>' . $myobject->refLine . '</pre></td></tr>';
-    print '<tr><td class="fieldrequired">Rechnung Nr.</td><td>';
-    print '<input type="text" name="billnr" id="billnr"  value="' . $myobject->billnr . '">';
-    print '</td></tr>';
   }
-  print '<tr><td class="fieldrequired">Rechungsdatum</td><td>';
+  print '<tr><td width="30%" class="fieldrequired">Rechnung Nr.</td><td>';
+  print '<input type="text" name="billnr" id="billnr" value="' . dol_escape_htmltag($myobject->billnr) . '"></td></tr>';
+  print '<tr><td class="fieldrequired">Rechnungsdatum</td><td>';
   $form->select_date('', 'facturedate', 0, 0, 0, "myform");
   print '</td></tr>';
-  print '<tr><td class="fieldrequired">Zahlbar bis</td><td>';
   $nDays = 30;
   $condID = $societe->cond_reglement_supplier_id;
   if ($condID) {
     $payTerm = new PaymentTerm($db);
     $payTerm->fetch($condID);
-    $nDays = $payTerm->nbjour;
-    if ($nDays == null) {
-      $nDays = 30;
-    }
+    if ($payTerm->nbjour) $nDays = $payTerm->nbjour;
   }
   $dueDate = new DateTime();
   $dueDate->add(new DateInterval('P' . $nDays . 'D'));
+  print '<tr><td class="fieldrequired">Zahlbar bis</td><td>';
   $form->select_date($dueDate->format('Y-m-d'), 'duedate', 0, 0, 0, "myform");
   print '</td></tr>';
-  print '<tr><td class="fieldrequired">Rechnung freigeben</td><td>';
-  print '<input type="checkbox" name="validate" value="1">';
-  print '</td></tr><tr><td>';
-  echo "<input type='hidden' name='codeline' id='codeline' value='" . $myobject->codeline . "'>";
-  echo "<input type='hidden' name='pcAccount' id='pcAccount' value='" . $myobject->pcAccount . "'>";
-  echo "<input type='hidden' name='esrid' id='esrid' value='" . $myobject->esrID . "'>";
-  echo "<input type='hidden' name='codeline' id='codeline' value='" . $myobject->codeline . "'>";
-  if ($myobject->hasAmount) {
-    echo "<input type='hidden' name='amount' id='amount' value='" . $myobject->amount . "'>";
-  }
-  if ($societe->id == 0) {
-    echo "<input type='submit' value='Lieferant zuweisen' >";
-  } else {
-    echo "<input type='submit' value='Rechnung erstellen' >";
-  }
-  if ($action == 'createesrid') {
-    echo "<input type='hidden' name='action' value='createfacture' >";
-  } else {
-    echo "<input type='hidden' name='action' value='createesrid' >";
-  }
-  echo "</td></tr></table>";
-  echo "</form>";
-  if ($societe->id == 0) {
-    echo '<script type="text/javascript" language="javascript">
-                $(function(){
-                    $(document.body).bind("mouseup", function(e){
-                        var selection;
+  print '<tr><td class="fieldrequired">Rechnung freigeben</td><td><input type="checkbox" name="validate" value="1"></td></tr>';
+};
 
-                        if (window.getSelection) {
-                          selection = window.getSelection();
-                        } else if (document.selection) {
-                          selection = document.selection.createRange();
-                        }
+if ($inReview) {
+  // ===== STEP 2: review parsed QR / assign supplier / create invoice =====
 
-                        var sStr= selection.toString();
-                        if (sStr && sStr.length >0)
-                        {
-                            document.getElementById("billnr").value= sStr;
-                        }
-                    });
-                });
-        </script>';
+  // Scanned payment info
+  print '<table class="border" width="100%">';
+  print '<tr class="liste_titre"><td colspan="2">' . ($myobject->isQRCode ? 'QR-Rechnung' : 'Zahlung') . '</td></tr>';
+  if ($myobject->iban) {
+    print '<tr><td width="30%">IBAN</td><td>' . dol_escape_htmltag($myobject->iban) . '</td></tr>';
+  } else {
+    print '<tr><td width="30%">PC Konto</td><td>' . dol_escape_htmltag($myobject->pcAccount) . '</td></tr>';
+    print '<tr><td>ESR ID</td><td>' . dol_escape_htmltag($myobject->esrID) . '</td></tr>';
   }
-  if ($warn > 0) {
-    echo '<strong>';
-    echo dol_htmloutput_mesg($mesg, null, 'warning');
-    echo '</strong>';
+  if ($myobject->payToName) print '<tr><td>Empf&auml;nger</td><td>' . dol_escape_htmltag($myobject->payToName) . '</td></tr>';
+  // Build the address from the clean structured parts (avoids the raw newlines that
+  // sit in the combined payToAddress string); fall back to the combined string.
+  $addrParts = array();
+  $s = trim($myobject->payToStreet . ' ' . $myobject->payToBuildingNo);
+  if ($s !== '') $addrParts[] = $s;
+  $ct = trim($myobject->payToPostcode . ' ' . $myobject->payToTown);
+  if ($ct !== '') $addrParts[] = $ct;
+  if (!empty($myobject->payToCountry)) $addrParts[] = $myobject->payToCountry;
+  if (empty($addrParts) && $myobject->payToAddress) {
+    $addrParts[] = trim(str_replace(array("\r\n", "\r", "\n"), ', ', $myobject->payToAddress));
+  }
+  if (!empty($addrParts)) print '<tr><td>Adresse</td><td>' . dol_escape_htmltag(implode(', ', $addrParts)) . '</td></tr>';
+  if ($myobject->hasAmount) print '<tr><td>Betrag</td><td>' . price($myobject->amount) . ' CHF</td></tr>';
+  print '</table><br>';
+
+  if ($societe->id != 0) {
+    // ----- Known supplier: create invoice -----
+    print '<div class="info">Bekannter Lieferant: ' . $societe->getNomUrl(1) . '</div><br>';
+    print '<form method="post" name="myform">';
+    print '<input type="hidden" name="token" value="' . newToken() . '">';
+    echo "<input type='hidden' name='codeline' value='" . $myobject->codeline . "'>";
+    print '<input type="hidden" name="socid" value="' . $societe->id . '">';
+    if ($myobject->hasAmount) print '<input type="hidden" name="amount" value="' . dol_escape_htmltag($myobject->amount) . '">';
+    print '<table class="border" width="100%">';
+    if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">Betrag</td><td><input type="text" name="amount"></td></tr>';
+    $renderInvoiceFields();
+    print '</table><br>';
+    print '<div class="center"><input type="submit" class="button" value="Rechnung erstellen"></div>';
+    print '<input type="hidden" name="action" value="' . ($action == 'createesrid' ? 'createfacture' : 'createesrid') . '">';
+    print '</form>';
+  } else {
+    // ----- Unknown supplier: assign existing OR create new -----
+    print '<form method="post" name="myform">';
+    print '<input type="hidden" name="token" value="' . newToken() . '">';
+    echo "<input type='hidden' name='codeline' value='" . $myobject->codeline . "'>";
+    if ($myobject->hasAmount) print '<input type="hidden" name="amount" value="' . dol_escape_htmltag($myobject->amount) . '">';
+    print '<table class="border" width="100%">';
+    print '<tr class="liste_titre"><td colspan="2">Bestehendem Lieferant zuweisen</td></tr>';
+    print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('Supplier') . '</td><td>';
+    print $form->select_company(GETPOST('socid', 'int'), 'socid', 's.fournisseur = 1', 1);
+    print '</td></tr>';
+    if (!$myobject->hasAmount) print '<tr><td class="fieldrequired">Betrag</td><td><input type="text" name="amount"></td></tr>';
+    $renderInvoiceFields();
+    print '</table><br>';
+    print '<div class="center"><input type="submit" class="button" value="Zuweisen &amp; Rechnung erstellen"></div>';
+    print '<input type="hidden" name="action" value="' . ($action == 'createesrid' ? 'createfacture' : 'createesrid') . '">';
+    print '</form>';
+
+    // Create a new supplier from the QR data (QR bills only)
+    if ($myobject->isQRCode && $myobject->iban) {
+      $prefStreet = trim($myobject->payToStreet . ' ' . $myobject->payToBuildingNo);
+      print '<br><form method="post">';
+      print '<input type="hidden" name="token" value="' . newToken() . '">';
+      echo "<input type='hidden' name='codeline' value='" . $myobject->codeline . "'>";
+      print '<table class="border" width="100%">';
+      print '<tr class="liste_titre"><td colspan="2">Neuen Lieferant aus QR-Daten anlegen</td></tr>';
+      print '<tr><td width="30%" class="fieldrequired">Name</td><td><input type="text" name="new_name" size="50" value="' . dol_escape_htmltag($myobject->payToName) . '"></td></tr>';
+      print '<tr><td>Strasse / Nr.</td><td><input type="text" name="new_street" size="50" value="' . dol_escape_htmltag($prefStreet) . '"></td></tr>';
+      print '<tr><td class="fieldrequired">PLZ / Ort</td><td>';
+      print '<input type="text" name="new_zip" size="8" value="' . dol_escape_htmltag($myobject->payToPostcode) . '"> ';
+      print '<input type="text" name="new_town" size="30" value="' . dol_escape_htmltag($myobject->payToTown) . '"></td></tr>';
+      print '<tr><td class="fieldrequired">Land</td><td><input type="text" name="new_country" size="4" value="' . dol_escape_htmltag($myobject->payToCountry ? $myobject->payToCountry : 'CH') . '"></td></tr>';
+      print '<tr><td>IBAN</td><td>' . dol_escape_htmltag($myobject->iban) . '</td></tr>';
+      print '</table><br>';
+      print '<div class="center"><input type="submit" class="button" value="Lieferant anlegen"></div>';
+      print '<input type="hidden" name="action" value="createsupplier">';
+      print '</form>';
+    }
+  }
+
+  // Live validation of the editable QR reference (QRR): max 27 digits + modulo-10
+  // recursive check digit, mirroring isValidCheckDigit() / the payment-side gate.
+  if ($myobject->isQRCode) {
+    echo '<script type="text/javascript">
+      function swpMod10(n){var t=[0,9,4,6,8,2,7,1,3,5],x=0;for(var i=0;i<n.length;i++){x=t[(x+parseInt(n.charAt(i),10))%10];}return (10-x)%10;}
+      function swpCheckQrref(){var e=document.getElementById("qrref");if(!e)return;var v=e.value.replace(/\s/g,"");var m=document.getElementById("qrref_msg");
+        if(v===""){m.innerHTML="";e.style.backgroundColor="";return;}
+        var ok=/^[0-9]{1,27}$/.test(v)&&swpMod10(v.substring(0,v.length-1))===parseInt(v.charAt(v.length-1),10);
+        if(ok){m.innerHTML="<span style=\'color:green\'>✓ gültig ("+v.length+" Ziffern)</span>";e.style.backgroundColor="#e6ffe6";}
+        else{m.innerHTML="<span style=\'color:#cc0000\'>✗ ungültige QR-Referenz ("+v.length+" Ziffern, erwartet 27)</span>";e.style.backgroundColor="#ffe6e6";}
+      }
+      jQuery(document).ready(function(){swpCheckQrref();});
+    </script>';
   }
 } else {
-  if ($error > 0) {
-    echo '<strong>';
-    echo dol_htmloutput_errors($mesg);
-    echo '</strong>';
-  } else if ($facture && $facture->id > 0) {
-    echo '<strong>Rechnung ' . $facture->getNomUrl() . ' wurde erfasst<br></strong><br>';
+  // ===== STEP 1: read a QR code =====
+  if ($facture && $facture->id > 0) {
+    echo '<div class="ok">Rechnung ' . $facture->getNomUrl() . ' wurde erfasst</div><br>';
   }
 
-  echo "<form method='post'>";
-  echo '<input type="hidden" name="token" value="'.newToken().'">';
-  echo "ESR Codierzeile:<br>";
-  echo "<input type='text' width='30' name='codeline' id='codeline'>";
-  echo "<input type='submit' value='Einlesen' >";
-  echo "<input type='hidden' name='action' value='analyzecode' >";
-  echo "</form>";
+  print '<form method="post">';
+  print '<input type="hidden" name="token" value="' . newToken() . '">';
+  print '<table class="border" width="100%">';
+  print '<tr><td width="30%">QR-Code</td><td><textarea name="qrcode" id="qrcode" rows="6" cols="60"></textarea></td></tr>';
+  print '</table><br>';
+  print '<div class="center"><input type="submit" class="button" value="Einlesen"></div>';
+  print '<input type="hidden" name="action" value="analyzecode">';
+  print '</form><br>';
 
-  echo "<hr><form method='post'>";
-  echo '<input type="hidden" name="token" value="'.newToken().'">';
-  echo "QR Code<br>:";
-  echo "<textarea name='qrcode' id='qrcode'></textarea>";
-  echo "<input type='submit' value='Einlesen' >";
-  echo "<input type='hidden' name='action' value='analyzecode' >";
-  echo "</form>";
-
-  
   $actual_host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
-  //$actual_host= "http://192.168.200.140";
-
   echo "<a href='" . $actual_host . DOL_URL_ROOT . "/custom/swisspayments/mobilescan.php' target='_blank'>";
   echo "<img src='mobileqr.php'><br/>";
-  echo "Scan this qr code to scan via mobile phone<br>";
+  echo "QR-Code scannen, um per Mobiltelefon zu erfassen<br>";
   echo "</a>";
 
   echo '<script type="text/javascript" language="javascript">
             jQuery(document).ready(function() {
-
-                            jQuery("#codeline").focus();
+                            jQuery("#qrcode").focus();
             });
     </script>';
 }
