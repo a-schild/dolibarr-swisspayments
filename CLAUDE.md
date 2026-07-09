@@ -50,7 +50,10 @@ The "to pay" list in `dtapayments.php` gates each bill with a `$canPay` flag; wh
 ### Bank file generation (`lib/`)
 Two parallel families of generator classes produce the outbound payment file:
 - **Legacy fixed-width** (SIX Interbank Clearing DTA / EZAG): `dtaChFile.php`+`dtaChTransaction.php`, `ezagChFile.php`+`ezagChTransaction.php`.
-- **ISO 20022 pain.001 XML**: `z38ChFile.php`+`z38ChTransaction.php` wrap the vendored **`Z38\SwissPayment`** library under `lib/Z38/SwissPayment/` (namespaced, Composer-style but vendored in-tree — no `composer.json`). This is the modern path; the `dtaCh*`/`ezagCh*` classes are the legacy path.
+- **ISO 20022 pain.001 XML**: `z38ChFile.php`+`z38ChTransaction.php` wrap the vendored **`Z38\SwissPayment`** library under `lib/Z38/SwissPayment/` (namespaced, Composer-style but vendored in-tree — no `composer.json`; classes are hand-loaded via a `dol_include_once` list at the top of `swisspaymentspayh.class.php`). This is the modern path; the `dtaCh*`/`ezagCh*` classes are the legacy path.
+  - The vendored lib is the **`sdespont/swiss-payment` fork** (of `ch2877/swiss-payment`, MIT), which adds an SPS version selector. `CustomerCreditTransfer`'s 3rd arg picks the format: `SPS_2021` → `pain.001.001.03.ch.02` (old, deprecated), `SPS_2022` → **`pain.001.001.09.ch.03`** (current — mandatory for execution dates after 2026-11-13). `createDTA()` passes `SPS_2022`.
+  - pain.001.001.09.ch.03 requires **structured** creditor addresses — use `StructuredPostalAddress::sanitize(street, buildingNo|null, postCode, town, country)` (not `UnstructuredPostalAddress`). ESR/IS (red-slip) transaction types were removed in this format; `createDTA()` only emits QR-bill (`BankCreditTransferWithQRR`) and IBAN (`BankCreditTransfer`) transactions and errors on ESR/IS.
+  - Validate generated files against `tests/pain.001.001.09.ch.03.xsd` (DOMDocument::schemaValidate) before the bank's test portal.
 
 ### Frontend / scanning
 - `mobilescan.php` + `js/html5-qrcode.min.js` scan a QR-bill with the device camera and POST the payload to `createinvoice.php`.

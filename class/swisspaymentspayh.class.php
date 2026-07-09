@@ -467,7 +467,15 @@ class Swisspaymentspayh extends CommonObject {
                 {
                     if (!isset($message)) 
                     {
-                        $message = new CustomerCreditTransfer($this->payident, $bank->proprio);
+                        // SPS_2022 => pain.001.001.09.ch.03 (mandatory from 2026-11-13).
+                        $message = new CustomerCreditTransfer(
+                                    $this->payident,
+                                    $bank->proprio,
+                                    CustomerCreditTransfer::SPS_2022,
+                                    'Dolibarr Swisspayments',
+                                    '8.*',
+                                    'Aarboard AG'
+                                );
                     }
                     $paymentOut = new PaymentInformation($paiement->ref, $bank->proprio, new BIC($bank->bic), new IBAN($bank->iban));
                     //new z38ChFile(sprintf('%05d', $this->id), $bank->code_banque);
@@ -563,15 +571,26 @@ class Swisspaymentspayh extends CommonObject {
 
                             if ($this->isISO20022)
                             {
+                                // pain.001.001.09.ch.03 (SPS 2022) requires a structured creditor
+                                // address (StrtNm/PstCd/TwnNm/Ctry). The house number may be carried
+                                // inside the street until further notice, so we pass the address line
+                                // as the street and leave the building number empty. Town + country are
+                                // mandatory; fall back to CH when no country is set on the third party.
+                                $creditorAddress = StructuredPostalAddress::sanitize(
+                                            trim($rLine1 . ' ' . $rLine2),
+                                            null,
+                                            $soc->zip,
+                                            $soc->town,
+                                            !empty($soc->country_code) ? $soc->country_code : 'CH'
+                                        );
                                 if ($isESR)
                                 {
-                                    $transaction = new ISRCreditTransfer(
-                                        $paiement->id,
-                                        $paiement->ref,
-                                        new Money\CHF(round(floatval($paiement->montant)*100.0)), // CHF 200.00
-                                        new ISRParticipant($factf->esrpartynr),
-                                        $factf->esrrefnr
-                                            );
+                                    // ESR / red inpayment slip (payment type 1) was removed from the
+                                    // Swiss Payment Standards with pain.001.001.09. Such bills must be
+                                    // paid as QR-bill or IBAN transfer instead.
+                                    $error++;
+                                    $this->errors[] = "ESR/red-slip payment (bill " . $fact->ref . ") is not supported in pain.001.001.09; use a QR-bill or IBAN transfer.";
+                                    continue;
                                 }
                                 else if ($isQRBILL)
                                 {
@@ -581,7 +600,7 @@ class Swisspaymentspayh extends CommonObject {
                                                 $paiement->ref,
                                                 new Money\CHF(round(floatval($paiement->montant)*100.0)),
                                                 $soc->name,
-                                                UnstructuredPostalAddress::sanitize($rLine1 . ' ' . $rLine2, $soc->zip . ' ' . $soc->town),
+                                                $creditorAddress,
                                                 $iban,
                                                 IID::fromIBAN($iban), /* Not needed for QRR */
                                                 $factf->esrline
@@ -590,7 +609,7 @@ class Swisspaymentspayh extends CommonObject {
                                 }
                                 else
                                 {
-                                    if (isset($defaultRIB->iban) && !empty($defaultRIB->iban) 
+                                    if (isset($defaultRIB->iban) && !empty($defaultRIB->iban)
                                             && isset($defaultRIB->bic) && !empty($defaultRIB->bic))
                                     {
                                         $transaction = new BankCreditTransfer(
@@ -598,7 +617,7 @@ class Swisspaymentspayh extends CommonObject {
                                                     $paiement->ref,
                                                     new Money\CHF(round(floatval($paiement->montant)*100.0)),
                                                     $soc->name,
-                                                    UnstructuredPostalAddress::sanitize($rLine1 . ' ' . $rLine2, $soc->zip . ' ' . $soc->town),
+                                                    $creditorAddress,
                                                     new IBAN($defaultRIB->iban),
                                                     new BIC($defaultRIB->bic)
                                                 );
@@ -606,15 +625,12 @@ class Swisspaymentspayh extends CommonObject {
                                     }
                                     else
                                     {
-                                        $transaction = new IS1CreditTransfer(
-                                                    $paiement->id,
-                                                    $paiement->ref,
-                                                    new Money\CHF(round(floatval($paiement->montant)*100.0)),
-                                                    $soc->name,
-                                                    UnstructuredPostalAddress::sanitize($rLine1 . ' ' . $rLine2, $soc->zip . ' ' . $soc->town),
-                                                    new PostalAccount($defaultRIB->number)
-                                                );
-                                        $transaction->setRemittanceInformation($fact->ref_supplier);
+                                        // Postal-account (IS) payments were also removed with
+                                        // pain.001.001.09. Without a QR reference or IBAN+BIC we cannot
+                                        // build a valid transaction.
+                                        $error++;
+                                        $this->errors[] = "Bill " . $fact->ref . " has no QR reference and no IBAN+BIC; cannot be paid via pain.001.001.09.";
+                                        continue;
                                     }
                                 }
                                 $paymentOut->addTransaction($transaction);
