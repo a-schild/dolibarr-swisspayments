@@ -423,6 +423,13 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
   }
 }
 
+// The invoice number ("Rechnung Nr.") is required (it is the supplier's invoice number
+// and the duplicate-check key). For QR bills it now defaults to empty, so enforce it here.
+if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid") && trim((string) $myobject->billnr) === "") {
+  setEventMessage("Bitte eine Rechnungsnummer erfassen", 'errors');
+  $error++;
+}
+
 if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid")) {
   $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
   if ($resql) {
@@ -546,8 +553,11 @@ $renderInvoiceFields = function () use ($form, $societe, $myobject, $db) {
     if (!$isQrIban) print '<br><span class="opacitymedium">Keine QR-IBAN &ndash; QR-Referenz optional (SCOR/ohne Referenz)</span>';
     print '</td></tr>';
   }
+  // For QR bills the invoice number is the supplier's own number (entered by the user),
+  // not the QR reference - default to empty and keep whatever was typed on re-submit.
+  $billnrDefault = $myobject->isQRCode ? GETPOST('billnr', 'alphanohtml') : $myobject->billnr;
   print '<tr><td width="30%" class="fieldrequired">Rechnung Nr.</td><td>';
-  print '<input type="text" name="billnr" id="billnr" value="' . dol_escape_htmltag($myobject->billnr) . '"></td></tr>';
+  print '<input type="text" name="billnr" id="billnr" value="' . dol_escape_htmltag($billnrDefault) . '"></td></tr>';
   print '<tr><td class="fieldrequired">Rechnungsdatum</td><td>';
   $form->select_date('', 'facturedate', 0, 0, 0, "myform");
   print '</td></tr>';
