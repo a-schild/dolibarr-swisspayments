@@ -6,6 +6,12 @@
 # .gitattributes `export-ignore` (CLAUDE.md, doc/, tests/, .github/), so the zip
 # is only what the running module needs.
 #
+# The zip is named `module_swisspayments-<version>.zip`: Dolibarr's
+# "Deploy/install external app" only accepts file names matching
+# `module_*-x.y*.zip`, and derives the target folder (custom/swisspayments/)
+# from the part between `module_` and `-`, which must match the archive's
+# top-level folder.
+#
 # Install in Dolibarr: Home > Setup > Modules/Applications >
 # "Deploy/install external app", upload the zip (it extracts to
 # custom/swisspayments/), then enable the "Swisspayments" module.
@@ -30,7 +36,9 @@ jobs:
       - name: Build deployable module zip
         run: |
           MODULE=swisspayments
-          ZIP="${MODULE}-${GITHUB_REF_NAME}.zip"
+          # Dolibarr requires the pattern module_<name>-<version>.zip for the
+          # "Deploy/install external app" uploader.
+          ZIP="module_${MODULE}-${GITHUB_REF_NAME}.zip"
           # Archive the exact tagged tree; --prefix gives the required top folder,
           # export-ignore (.gitattributes) drops the non-deployable files.
           git archive --format=zip --prefix="${MODULE}/" -o "${ZIP}" HEAD

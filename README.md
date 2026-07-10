@@ -45,14 +45,15 @@ supplier's invoice to producing an ISO 20022 payment file you upload to your ban
 
 Ready‑to‑install module zips are published automatically on the
 [**Releases**](https://github.com/a-schild/dolibarr-swisspayments/releases) page —
-each tagged version has a `swisspayments-<version>.zip` asset built by GitHub Actions.
+each tagged version has a `module_swisspayments-<version>.zip` asset built by GitHub
+Actions (the `module_…` name is the format Dolibarr's uploader requires).
 Grab the latest release, or clone this repository to run the current development state.
 
 See the [changelog](CHANGELOG.md) for what changed between versions.
 
 ## Installation
 
-1. Download the latest release zip (`swisspayments-<version>.zip`) from the
+1. Download the latest release zip (`module_swisspayments-<version>.zip`) from the
    [Releases](https://github.com/a-schild/dolibarr-swisspayments/releases) page, or clone
    this repository.
 2. Extract it into your Dolibarr `htdocs/custom/` directory so the files live under
@@ -106,13 +107,14 @@ generated file with your bank's test/validation portal before going live.
 
 Tagging a release builds a minimal module zip automatically via GitHub Actions
 ([`.github/workflows/release.yml`](.github/workflows/release.yml)) and attaches it to the
-GitHub release. The archive contains a single top‑level `swisspayments/` folder and
-excludes dev‑only files (docs, tests, CI config) via `.gitattributes`.
+GitHub release. The archive is named `module_swisspayments-<version>.zip` (the format
+Dolibarr's uploader requires) and contains a single top‑level `swisspayments/` folder,
+excluding dev‑only files (docs, tests, CI config) via `.gitattributes`.
 
 To build one locally:
 
 ```sh
-git archive --format=zip --prefix=swisspayments/ -o swisspayments.zip HEAD
+git archive --format=zip --prefix=swisspayments/ -o module_swisspayments-<version>.zip HEAD
 ```
 
 ## Version

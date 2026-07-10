@@ -7,6 +7,15 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.07.3] – 2026-07-10
+
+### Fixed
+- Release zip is now named `module_swisspayments-<version>.zip`. Dolibarr's
+  "Deploy/install external app" uploader only accepts file names matching
+  `module_*-x.y*.zip`; the previous `swisspayments-<version>.zip` was rejected
+  ("… entspricht nicht der erwarteten Syntax: module_*-x.y*.zip"). The archive
+  still contains the single top-level `swisspayments/` folder it needs.
+
 ### Changed
 - New module icon: replaced the old ESR-slip picto with a Swiss QR-bill mark (QR
   finder patterns + the red Swiss cross). Shipped as a scalable `img/*.svg` plus
