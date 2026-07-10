@@ -7,6 +7,20 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.07.4] – 2026-07-10
+
+### Fixed
+- Dolistore package validation: entry pages (`createinvoice.php`, `dtafile.php`,
+  `dtapayments.php`, `swisspayments.php`, `mobileqr.php`, `scanpoll.php`,
+  `mobilescan.php`) now load Dolibarr with the modulebuilder multi-attempt
+  `main.inc.php` sequence (tries the web root and the `custom/` subdir) instead of
+  a single hard-coded `require '../../main.inc.php';`, which the store validator
+  rejected.
+- Module classes now include their `lib/` dependencies via `dol_include_once()`
+  instead of `require_once(DOL_DOCUMENT_ROOT . '/custom/swisspayments/lib/…')`
+  (`swisspaymentspayh.class.php` for `dtaChFile.php`/`ezagChFile.php`, `dtafile.php`
+  for `dtaChFile.php`) — the store validator flagged the `DOL_DOCUMENT_ROOT` form.
+
 ## [2026.07.3] – 2026-07-10
 
 ### Fixed

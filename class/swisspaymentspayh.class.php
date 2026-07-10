@@ -14,8 +14,8 @@ require_once(DOL_DOCUMENT_ROOT . "/core/class/commonobject.class.php");
 require_once DOL_DOCUMENT_ROOT . '/fourn/class/fournisseur.class.php';
 require_once DOL_DOCUMENT_ROOT . '/fourn/class/fournisseur.facture.class.php';
 require_once DOL_DOCUMENT_ROOT . '/fourn/class/paiementfourn.class.php';
-require_once(DOL_DOCUMENT_ROOT . '/custom/swisspayments/lib/dtaChFile.php');
-require_once(DOL_DOCUMENT_ROOT . '/custom/swisspayments/lib/ezagChFile.php');
+dol_include_once('/custom/swisspayments/lib/dtaChFile.php');
+dol_include_once('/custom/swisspayments/lib/ezagChFile.php');
 
 dol_include_once('/custom/swisspayments/class/swisspayments.class.php');
 dol_include_once('/custom/swisspayments/class/swisspaymentssoc.class.php');

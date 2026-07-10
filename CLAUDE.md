@@ -18,7 +18,7 @@ The module lives under Dolibarr's `htdocs/` as either `htdocs/swisspayments/` **
 - `swisspayments.php`, `createinvoice.php`, `class/swisspayments.class.php` include via `/swisspayments/...`.
 - `dtapayments.php`, `dtafile.php`, `mobileqr.php`, `class/swisspaymentspayh.class.php` hard-code `/custom/swisspayments/...`.
 
-When editing include/`dol_include_once` paths, match the convention already used by neighbouring files in that page's call chain rather than "fixing" one in isolation — changing it can break the deployment the file was written for. Entry pages start with `require '../../main.inc.php';` which assumes the two-levels-deep `custom/` layout.
+When editing include/`dol_include_once` paths, match the convention already used by neighbouring files in that page's call chain rather than "fixing" one in isolation — changing it can break the deployment the file was written for. Entry pages load Dolibarr with the modulebuilder multi-attempt sequence (`$res = @include ...` trying `CONTEXT_DOCUMENT_ROOT`, a path derived from `SCRIPT_FILENAME`, then `../`, `../../`, `../../../main.inc.php`, `die()` on failure) — this is required by the Dolistore package validator and works whether the module sits in `htdocs/` or `htdocs/custom/`. Do not revert an entry page to a single `require '../../main.inc.php';`. Likewise, module `lib/`/`class/` files must be pulled in with `dol_include_once('/…')` (or `dol_include_once('/custom/swisspayments/…')` to match neighbours), never `require_once(DOL_DOCUMENT_ROOT . '/custom/swisspayments/…')` — the validator rejects the latter.
 
 ## Architecture
 
