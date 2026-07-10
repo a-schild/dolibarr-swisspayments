@@ -7,6 +7,12 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+### Changed
+- New module icon: replaced the old ESR-slip picto with a Swiss QR-bill mark (QR
+  finder patterns + the red Swiss cross). Shipped as a scalable `img/*.svg` plus
+  regenerated 32×32 PNGs (`img/object_swisspayments.png`, `img/swisspayments.png`),
+  up from the previous 16×16.
+
 ## [2026.07.2] – 2026-07-10
 
 ### Security
