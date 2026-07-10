@@ -21,6 +21,9 @@ uses date‑based versions (`YYYY.M`).
 - `createinvoice.php`: the ESR-branch amount is sanitized with `price2num`.
 - `mobilescan.php`: the posted scan payload is size-capped (2 KB).
 - Removed the unused `decodeqr.php` debug page (reflected the raw request back — XSS).
+- Removed the vendored PHP-QR-Code demo/build scripts (`lib/phpqrcode/index.php` and
+  `lib/phpqrcode/tools/`): unauthenticated, web-reachable pages that wrote files to disk
+  from `?data=` input. The module uses the library classes directly, so they were unused.
 
 ### Changed
 - **Mobile scanning reworked** to a login-free, desktop-paired flow. The desktop shows a
