@@ -737,17 +737,36 @@ if ($inReview) {
   print '<input type="hidden" name="action" value="analyzecode">';
   print '</form><br>';
 
+  // Pair a phone as a login-free scanner: show a QR code that opens the mobile scan page
+  // for a one-time token, then poll for the scanned payload and continue automatically.
+  $scanToken = swisspayments_scan_create_token($user->id, $conf->entity);
   $actual_host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
-  echo "<a href='" . $actual_host . DOL_URL_ROOT . "/custom/swisspayments/mobilescan.php' target='_blank'>";
-  echo "<img src='mobileqr.php'><br/>";
-  echo "QR-Code scannen, um per Mobiltelefon zu erfassen<br>";
+  $mobileUrl = $actual_host . DOL_URL_ROOT . "/custom/swisspayments/mobilescan.php?t=" . $scanToken;
+  echo '<div style="margin-top:10px">';
+  echo "<a href='" . $mobileUrl . "' target='_blank'>";
+  echo "<img src='mobileqr.php?t=" . $scanToken . "'><br/>";
+  echo "Mit dem Smartphone scannen (kein Login n&ouml;tig)";
   echo "</a>";
+  echo '<div id="swp_scan_status" style="margin-top:6px"></div>';
+  echo '</div>';
 
-  echo '<script type="text/javascript" language="javascript">
-            jQuery(document).ready(function() {
-                            jQuery("#qrcode").focus();
-            });
-    </script>';
+  echo '<script type="text/javascript">
+    jQuery(document).ready(function() { jQuery("#qrcode").focus(); });
+    (function(){
+      var token = "' . $scanToken . '";
+      var timer = setInterval(function(){
+        fetch("scanpoll.php?t=" + token, {cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){
+          if (d && d.payload) {
+            clearInterval(timer);
+            var q = document.getElementById("qrcode");
+            var st = document.getElementById("swp_scan_status");
+            if (st) st.innerHTML = "✓ Vom Smartphone empfangen, wird eingelesen ...";
+            if (q) { q.value = d.payload; if (q.form) { q.form.submit(); } }
+          }
+        }).catch(function(){});
+      }, 2000);
+    })();
+  </script>';
 }
 
 // Example 2: Adding links to objects

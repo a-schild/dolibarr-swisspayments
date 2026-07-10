@@ -153,4 +153,69 @@ function isValidScor($ref) {
 	}
 	return $remainder === 1;
 }
+
+/**
+ * Directory (under the Dolibarr data root) that holds the mobile-scan pairing files.
+ *
+ * @return string
+ */
+function swisspayments_scan_dir() {
+	return DOL_DATA_ROOT . '/swisspayments/scan';
+}
+
+/**
+ * Absolute path of the pairing file for a token, or null when the token is malformed.
+ * A token is 16-64 lowercase hex characters, so it can never contain path separators.
+ *
+ * @param string $token
+ * @return string|null
+ */
+function swisspayments_scan_file($token) {
+	if (!preg_match('/^[a-f0-9]{16,64}$/', (string) $token)) {
+		return null;
+	}
+	return swisspayments_scan_dir() . '/' . $token . '.json';
+}
+
+/**
+ * Create and persist a new mobile-scan pairing token for a user. Also prunes pairing
+ * files older than 10 minutes.
+ *
+ * @param int $fk_user
+ * @param int $entity
+ * @return string The new token
+ */
+function swisspayments_scan_create_token($fk_user, $entity) {
+	$dir = swisspayments_scan_dir();
+	if (!is_dir($dir)) {
+		dol_mkdir($dir);
+	}
+	foreach ((array) glob($dir . '/*.json') as $f) {
+		if (@filemtime($f) < (time() - 600)) {
+			@unlink($f);
+		}
+	}
+	$token = bin2hex(random_bytes(16));
+	$data = array('fk_user' => (int) $fk_user, 'entity' => (int) $entity, 'date_create' => time(), 'payload' => null);
+	file_put_contents(swisspayments_scan_file($token), json_encode($data));
+	return $token;
+}
+
+/**
+ * Read a pairing file. Returns the decoded array, or null if missing/expired (10 min).
+ *
+ * @param string $token
+ * @return array|null
+ */
+function swisspayments_scan_read($token) {
+	$file = swisspayments_scan_file($token);
+	if (!$file || !is_file($file)) {
+		return null;
+	}
+	$data = json_decode(file_get_contents($file), true);
+	if (!is_array($data) || (time() - (int) ($data['date_create'] ?? 0)) > 600) {
+		return null;
+	}
+	return $data;
+}
 	

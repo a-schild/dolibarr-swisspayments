@@ -5,6 +5,15 @@ All notable changes to the Dolibarr **Swisspayments** module are documented here
 The format is based on [Keep a Changelog](https://keepachangelog.com/); the module
 uses date‑based versions (`YYYY.M`).
 
+## [Unreleased]
+
+### Changed
+- **Mobile scanning reworked** to a login-free, desktop-paired flow. The desktop shows a
+  QR code with a one-time token; the phone opens the scan page for that token (no Dolibarr
+  login), scans the QR-bill, and the desktop picks up the result by polling and continues
+  automatically — like a USB scanner. Pairing state is kept in `DOL_DATA_ROOT` files
+  (10-minute TTL), so no database change is needed.
+
 ## [2026.07.1] – 2026-07-09
 
 ### Added
