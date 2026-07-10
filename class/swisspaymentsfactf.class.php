@@ -79,7 +79,7 @@ class Swisspaymentsfactf extends CommonObject
 		
         $sql.= ") VALUES (";
         
-		$sql.= " ".(! isset($this->fk_factid)?'NULL':"'".$this->fk_factid."'").",";
+		$sql.= " ".(! isset($this->fk_factid)?'NULL':((int) $this->fk_factid)).",";
 		$sql.= " ".(! isset($this->esrline)?'NULL':"'".$this->db->escape(str_replace("\n", "\\n", str_replace("\r", "",$this->esrline)))."'").",";
 		$sql.= " ".(! isset($this->esrpartynr)?"'QRBILL'":"'". $this->db->escape($this->esrpartynr)."'").",";
 		$sql.= " ".(! isset($this->esrrefnr)?"'QRBILL'":"'".$this->db->escape($this->esrrefnr)."'");
@@ -148,15 +148,15 @@ class Swisspaymentsfactf extends CommonObject
         $sql.= " FROM ".MAIN_DB_PREFIX.$this->table_element." as t";
         if ($factID)
         {
-            $sql.= " WHERE t.fk_factid = ".$this->db->escape($factID);
+            $sql.= " WHERE t.fk_factid = ".((int) $factID);
         }
         else if ($esrLINE)
         {
-            $sql.= " WHERE t.esrline = ".$this->db->escape($esrLINE);
+            $sql.= " WHERE t.esrline = '".$this->db->escape($esrLINE)."'";
         }
         else
         {
-            $sql.= " WHERE t.rowid = ".$id;
+            $sql.= " WHERE t.rowid = ".((int) $id);
         }
 
     	dol_syslog(get_class($this)."::fetch");
@@ -211,10 +211,10 @@ class Swisspaymentsfactf extends CommonObject
         // Update request
         $sql = "UPDATE ".MAIN_DB_PREFIX.$this->table_element." SET";
         
-		$sql.= " fk_factid=".(isset($this->fk_factid)?$this->fk_factid:"null").",";
-		$sql.= " esrline=".(isset($this->esrline)?$this->esrline:"null").",";
-		$sql.= " esrpartynr=".(isset($this->esrpartynr)?$this->esrpartynr:"null").",";
-		$sql.= " esrrefnr=".(isset($this->esrrefnr)?$this->esrrefnr:"null");
+		$sql.= " fk_factid=".(isset($this->fk_factid)?((int) $this->fk_factid):"null").",";
+		$sql.= " esrline=".(isset($this->esrline)?"'".$this->db->escape($this->esrline)."'":"null").",";
+		$sql.= " esrpartynr=".(isset($this->esrpartynr)?"'".$this->db->escape($this->esrpartynr)."'":"null").",";
+		$sql.= " esrrefnr=".(isset($this->esrrefnr)?"'".$this->db->escape($this->esrrefnr)."'":"null");
         
         $sql.= " WHERE rowid=".$this->id;
 

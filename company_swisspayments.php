@@ -22,7 +22,7 @@ $langs->load("products");
 $langs->load("swisspayments@swisspayments");
 
 // Security check
-$socid = $_GET["id"];
+$socid = GETPOST('id', 'int');
 if ($user->societe_id) $socid=$user->societe_id;
 $result = restrictedArea($user, 'societe', $socid, '&societe');
 
@@ -34,8 +34,9 @@ $form = new Form($db);
  *	ACTIONS
  */
 // if ($action == 'confirm_delete' && $confirm != 'yes') { $action=''; }
-if ($_GET['action'] == 'delete' ) {
-	$deleteid= $_GET["deleteid"];
+// Delete is a POST action with a CSRF token (checked by main.inc.php).
+if (GETPOST('action', 'aZ09') == 'delete') {
+	$deleteid= GETPOST('deleteid', 'int');
         $swp= new Swisspaymentssoc($db);
         if ($swp->fetch($deleteid))
         {
@@ -109,7 +110,13 @@ dol_htmloutput_mesg($msg, null, 'valid');
                                         print "<td>" . $obj->startorderno . "</td>";
                                         print "<td>" . $obj->endorderno . "</td>";
                                         print "<td>";
-                                        print '<a class="butActionDelete" href="'.$_SERVER["PHP_SELF"].'?action=delete&amp;deleteid='.$obj->rowid.'&amp;id='.$socid.'">'.$langs->trans("Delete").'</a>';
+                                        // POST + CSRF token instead of a GET link (prevents CSRF deletes).
+                                        print '<form method="post" action="'.$_SERVER["PHP_SELF"].'?id='.((int) $socid).'" style="display:inline">';
+                                        print '<input type="hidden" name="token" value="'.newToken().'">';
+                                        print '<input type="hidden" name="action" value="delete">';
+                                        print '<input type="hidden" name="deleteid" value="'.((int) $obj->rowid).'">';
+                                        print '<input type="submit" class="butActionDelete" value="'.dol_escape_htmltag($langs->trans("Delete")).'">';
+                                        print '</form>';
                                         print "</td>";
                                         print "</td></tr>";
                                 }

@@ -7,6 +7,21 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+### Security
+- Hardened all database access against SQL injection: the object classes
+  (`swisspaymentssoc`, `swisspaymentsfactf`, `swisspaymentspayl`, `swisspaymentspayh`)
+  now escape every string value and cast every id/number in their `create`, `update`
+  and `fetch` statements.
+- `dtapayments.php`: the `filtre` parameter now only accepts a whitelisted column name
+  and escapes its value; the search filters and payment `comment`/`num_paiement` fields
+  are escaped (SQL injection / stored XSS).
+- `company_swisspayments.php`: the account id and delete id are read as integers, and
+  deleting a payment account is now a POST action protected by a CSRF token (was a
+  plain GET link, vulnerable to CSRF).
+- `createinvoice.php`: the ESR-branch amount is sanitized with `price2num`.
+- `mobilescan.php`: the posted scan payload is size-capped (2 KB).
+- Removed the unused `decodeqr.php` debug page (reflected the raw request back — XSS).
+
 ### Changed
 - **Mobile scanning reworked** to a login-free, desktop-paired flow. The desktop shows a
   QR code with a one-time token; the phone opens the scan page for that token (no Dolibarr

@@ -79,8 +79,8 @@ class Swisspaymentspayl extends CommonObject
 		
         $sql.= ") VALUES (";
         
-		$sql.= " ".(! isset($this->fk_payementfourn)?'NULL':"'".$this->fk_payementfourn."'").",";
-		$sql.= " ".(! isset($this->fk_payh)?'NULL':"'".$this->fk_payh."'").",";
+		$sql.= " ".(! isset($this->fk_payementfourn)?'NULL':((int) $this->fk_payementfourn)).",";
+		$sql.= " ".(! isset($this->fk_payh)?'NULL':((int) $this->fk_payh)).",";
                 $sql.= " '" . $this->db->idate($now) . "'";
         
 		$sql.= ")";
@@ -196,8 +196,8 @@ class Swisspaymentspayl extends CommonObject
         // Update request
         $sql = "UPDATE ".MAIN_DB_PREFIX.$this->table_element." SET";
         
-		$sql.= " fk_payementfourn=".(isset($this->fk_payementfourn)?$this->fk_payementfourn:"null").",";
-		$sql.= " fk_payh=".(isset($this->fk_payh)?$this->fk_payh:"null");
+		$sql.= " fk_payementfourn=".(isset($this->fk_payementfourn)?((int) $this->fk_payementfourn):"null").",";
+		$sql.= " fk_payh=".(isset($this->fk_payh)?((int) $this->fk_payh):"null");
         
         $sql.= " WHERE rowid=".$this->id;
 

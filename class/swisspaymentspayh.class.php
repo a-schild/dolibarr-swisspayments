@@ -153,9 +153,9 @@ class Swisspaymentspayh extends CommonObject {
 
         $sql.= ") VALUES (";
 
-        $sql.= " " . (!isset($this->payident) ? 'NULL' : "'" . $this->payident . "'") . ",";
+        $sql.= " " . (!isset($this->payident) ? 'NULL' : "'" . $this->db->escape($this->payident) . "'") . ",";
         $sql.= " '" . $this->db->idate($now) . "',";
-        $sql.= " " . (!isset($this->dtafile) ? 'NULL' : "'" . $this->dtafile . "'");
+        $sql.= " " . (!isset($this->dtafile) ? 'NULL' : "'" . $this->db->escape($this->dtafile) . "'");
 
 
         $sql.= ")";
@@ -214,9 +214,9 @@ class Swisspaymentspayh extends CommonObject {
 
         $sql.= " FROM " . MAIN_DB_PREFIX . $this->table_element . " as t";
         if ($payident)
-            $sql.= " WHERE t.payident = " . $this->db->escape($payident);
+            $sql.= " WHERE t.payident = '" . $this->db->escape($payident) . "'";
         else
-            $sql.= " WHERE t.rowid = " . $id;
+            $sql.= " WHERE t.rowid = " . ((int) $id);
 
         dol_syslog(get_class($this) . "::fetch");
         $resql = $this->db->query($sql);
@@ -266,8 +266,8 @@ class Swisspaymentspayh extends CommonObject {
         // Update request
         $sql = "UPDATE " . MAIN_DB_PREFIX . $this->table_element . " SET";
 
-        $sql.= " payident=" . (isset($this->payident) ? $this->payident : "null") . ",";
-        $sql.= " dtafile=" . (isset($this->dtafile) ? $this->dtafile : "null");
+        $sql.= " payident=" . (isset($this->payident) ? "'" . $this->db->escape($this->payident) . "'" : "null") . ",";
+        $sql.= " dtafile=" . (isset($this->dtafile) ? "'" . $this->db->escape($this->dtafile) . "'" : "null");
 
         $sql.= " WHERE rowid=" . $this->id;
 

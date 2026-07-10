@@ -250,41 +250,45 @@ if ($user->rights->fournisseur->facture->lire)
 
 	if (GETPOST('filtre'))
 	{
-		$filtrearr = explode(",", GETPOST('filtre'));
+		$filtrearr = explode(",", GETPOST('filtre', 'alphanohtml'));
 		foreach ($filtrearr as $fil)
 		{
 			$filt = explode(":", $fil);
-			$sql .= " AND " . $filt[0] . " = " . $filt[1];
+			// Only allow a plain column name and escape the value (prevents SQL injection).
+			if (count($filt) == 2 && preg_match('/^[a-zA-Z0-9_.]+$/', $filt[0]))
+			{
+				$sql .= " AND " . $filt[0] . " = '" . $db->escape($filt[1]) . "'";
+			}
 		}
 	}
 
 	if ($search_ref)
 	{
-		$sql .= " AND f.ref LIKE '%".$search_ref."%'";
+		$sql .= " AND f.ref LIKE '%".$db->escape($search_ref)."%'";
 	}
 	if ($search_ref_supplier)
 	{
-		$sql .= " AND f.ref_supplier LIKE '%".$search_ref_supplier."%'";
+		$sql .= " AND f.ref_supplier LIKE '%".$db->escape($search_ref_supplier)."%'";
 	}
 
 	if ($search_company)
 	{
-		$sql .= " AND s.nom LIKE '%".$search_company."%'";
+		$sql .= " AND s.nom LIKE '%".$db->escape($search_company)."%'";
 	}
 
 	if ($search_amount_no_tax)
 	{
-		$sql .= " AND f.total_ht = '".$search_amount_no_tax."'";
+		$sql .= " AND f.total_ht = '".$db->escape($search_amount_no_tax)."'";
 	}
 
 	if ($search_amount_all_tax)
 	{
-		$sql .= " AND f.total_ttc = '".$search_amount_all_tax."'";
+		$sql .= " AND f.total_ttc = '".$db->escape($search_amount_all_tax)."'";
 	}
 
 	if (dol_strlen(GETPOST('sf_re')) > 0)
 	{
-		$sql .= " AND f.ref_supplier LIKE '%".GETPOST('sf_re')."%'";
+		$sql .= " AND f.ref_supplier LIKE '%".$db->escape(GETPOST('sf_re'))."%'";
 	}
 
 	$sql.= " GROUP BY s.rowid, s.nom, f.rowid, f.ref, f.ref_supplier, f.total_ht, f.total_ttc, f.datef, f.date_lim_reglement, f.paye, f.fk_statut";
@@ -559,8 +563,8 @@ if ($user->rights->fournisseur->facture->lire)
                     $form->select_types_paiements(empty($_POST['paiementid'])?'2':$_POST['paiementid'],'paiementid');
                     print '</td>';
                     print '<td rowspan="3" valign="top">';
-                    print '<textarea name="comment" wrap="soft" cols="60" rows="'.ROWS_3.'">'.(empty($_POST['comment'])?'':$_POST['comment']).'</textarea></td></tr>';
-                    print '<tr><td>'.$langs->trans('Numero').'</td><td><input name="num_paiement" type="text" value="'.(empty($_POST['num_paiement'])?date('Y-m-d-H:i'):$_POST['num_paiement']).'"></td></tr>';
+                    print '<textarea name="comment" wrap="soft" cols="60" rows="'.ROWS_3.'">'.(empty($_POST['comment'])?'':dol_escape_htmltag($_POST['comment'])).'</textarea></td></tr>';
+                    print '<tr><td>'.$langs->trans('Numero').'</td><td><input name="num_paiement" type="text" value="'.(empty($_POST['num_paiement'])?date('Y-m-d-H:i'):dol_escape_htmltag($_POST['num_paiement'])).'"></td></tr>';
                     if (! empty($conf->banque->enabled))
                     {
                         print '<tr><td class="fieldrequired">'.$langs->trans('Account').'</td><td>';

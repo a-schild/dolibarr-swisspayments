@@ -106,7 +106,7 @@ if ($result > 0) {
           $myobject->findBillno($newESRSoc->startorderno, $newESRSoc->endorderno);
         }
         if (isset($_POST["amount"])) {
-          $myobject->amount = $_POST["amount"];
+          $myobject->amount = price2num(GETPOST("amount", 'alpha'));
         }
         // Now check billNr for duplicates
         $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");

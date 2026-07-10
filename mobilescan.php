@@ -34,7 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		exit;
 	}
 	// Raw payload (the QR-bill text, may contain newlines) - stored as-is, never executed.
-	$data['payload'] = isset($_POST['payload']) ? (string) $_POST['payload'] : '';
+	// A Swiss QR-bill payload is well under 1 KB; cap it to avoid storing arbitrary large blobs.
+	$payload = isset($_POST['payload']) ? (string) $_POST['payload'] : '';
+	if (strlen($payload) > 2000) {
+		echo json_encode(array('ok' => false, 'error' => 'toolarge'));
+		exit;
+	}
+	$data['payload'] = $payload;
 	$data['date_scan'] = time();
 	file_put_contents(swisspayments_scan_file($token), json_encode($data));
 	echo json_encode(array('ok' => true));

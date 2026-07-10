@@ -85,11 +85,11 @@ class Swisspaymentssoc extends CommonObject
 		
         $sql.= ") VALUES (";
         
-		$sql.= " ".(! isset($this->fk_societe)?'NULL':"'".$this->fk_societe."'").",";
-		$sql.= " ".(! isset($this->pcaccount)?'NULL':"'".$this->pcaccount."'").",";
-		$sql.= " ".(! isset($this->esrid)?'NULL':"'".$this->esrid."'").",";
-		$sql.= " ".(! isset($this->startorderno)?'NULL':"'".$this->startorderno."'").",";
-		$sql.= " ".(! isset($this->endorderno)?'NULL':"'".$this->endorderno."'")."";
+		$sql.= " ".(! isset($this->fk_societe)?'NULL':((int) $this->fk_societe)).",";
+		$sql.= " ".(! isset($this->pcaccount)?'NULL':"'".$this->db->escape($this->pcaccount)."'").",";
+		$sql.= " ".(! isset($this->esrid)?'NULL':"'".$this->db->escape($this->esrid)."'").",";
+		$sql.= " ".(! isset($this->startorderno)?'NULL':((int) $this->startorderno)).",";
+		$sql.= " ".(! isset($this->endorderno)?'NULL':((int) $this->endorderno))."";
 
         
 		$sql.= ")";
@@ -159,10 +159,10 @@ class Swisspaymentssoc extends CommonObject
 
 		
         $sql.= " FROM ".MAIN_DB_PREFIX.$this->table_element." as t";
-        if ($ref) $sql.= " WHERE t.ref = '".$ref."'";
+        if ($ref) $sql.= " WHERE t.ref = '".$this->db->escape($ref)."'";
         else if ($socid) $sql.= " WHERE t.fk_societe = '".$this->db->escape($socid)."' AND t.esrid = 'QRBILL'";
         else if ($pcAccount) $sql.= " WHERE t.pcaccount = '".$this->db->escape($pcAccount)."' AND t.esrid = '".$this->db->escape($esrid)."'";
-        else $sql.= " WHERE t.rowid = ".$id;
+        else $sql.= " WHERE t.rowid = ".((int) $id);
 
     	dol_syslog(get_class($this)."::fetch");
         $resql=$this->db->query($sql);
@@ -220,11 +220,11 @@ class Swisspaymentssoc extends CommonObject
         // Update request
         $sql = "UPDATE ".MAIN_DB_PREFIX.$this->table_element." SET";
         
-		$sql.= " fk_societe=".(isset($this->fk_societe)?$this->fk_societe:"null").",";
-		$sql.= " pcaccount=".(isset($this->pcaccount)?$this->pcaccount:"null").",";
-		$sql.= " esrid=".(isset($this->esrid)?$this->esrid:"null").",";
-		$sql.= " startorderno=".(isset($this->startorderno)?$this->startorderno:"null").",";
-		$sql.= " endorderno=".(isset($this->endorderno)?$this->endorderno:"null")."";
+		$sql.= " fk_societe=".(isset($this->fk_societe)?((int) $this->fk_societe):"null").",";
+		$sql.= " pcaccount=".(isset($this->pcaccount)?"'".$this->db->escape($this->pcaccount)."'":"null").",";
+		$sql.= " esrid=".(isset($this->esrid)?"'".$this->db->escape($this->esrid)."'":"null").",";
+		$sql.= " startorderno=".(isset($this->startorderno)?((int) $this->startorderno):"null").",";
+		$sql.= " endorderno=".(isset($this->endorderno)?((int) $this->endorderno):"null")."";
         
         $sql.= " WHERE rowid=".$this->id;
 
