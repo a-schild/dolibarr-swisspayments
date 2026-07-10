@@ -33,6 +33,14 @@ supplier's invoice to producing an ISO 20022 payment file you upload to your ban
 - **PHP 8.0** or newer.
 - The module is deployed under Dolibarr's `htdocs/custom/` directory.
 
+## Limitations
+
+- **Single entity only.** The module's tables have no `entity` column, so on a
+  Dolibarr install running several companies/entities its data is **not** isolated
+  per entity — it is shared across all of them. Use it only on single-entity
+  installations until this is addressed. See [`TODO.md`](TODO.md) for this and other
+  known issues.
+
 ## Download
 
 Ready‑to‑install module zips are published automatically on the

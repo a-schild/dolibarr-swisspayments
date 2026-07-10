@@ -7,6 +7,8 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.07.2] – 2026-07-10
+
 ### Security
 - Hardened all database access against SQL injection: the object classes
   (`swisspaymentssoc`, `swisspaymentsfactf`, `swisspaymentspayl`, `swisspaymentspayh`)
