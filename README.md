@@ -53,16 +53,34 @@ See the [changelog](CHANGELOG.md) for what changed between versions.
 
 ## Installation
 
-1. Download the latest release zip (`module_swisspayments-<version>.zip`) from the
-   [Releases](https://github.com/a-schild/dolibarr-swisspayments/releases) page, or clone
-   this repository.
-2. Extract it into your Dolibarr `htdocs/custom/` directory so the files live under
-   `htdocs/custom/swisspayments/`.
-   - In the Dolibarr admin you can also use **Setup → Modules/Applications →
-     Deploy/install external app** and upload the zip.
-3. Log in as a Dolibarr administrator, open **Setup → Modules/Applications**, find
-   **Swisspayments** in the *Financial* section and enable it.
-4. Grant the module permissions to the relevant users:
+Download the latest release zip (`module_swisspayments-<version>.zip`) from the
+[Releases](https://github.com/a-schild/dolibarr-swisspayments/releases) page, then install
+it with **one** of the two methods below.
+
+### Option A — upload in the Dolibarr admin (no server access needed)
+
+1. Log in as a Dolibarr **administrator**.
+2. Open **Home → Setup → Modules/Applications** and select the
+   **Deploy/install external app** tab.
+3. Under *"From an external source"*, choose the downloaded
+   `module_swisspayments-<version>.zip` and upload it. Dolibarr extracts it into
+   `htdocs/custom/swisspayments/` automatically.
+   - The file name must keep the `module_…-<version>.zip` form — Dolibarr rejects other
+     names (*"… entspricht nicht der erwarteten Syntax: module_\*-x.y\*.zip"*). The
+     release assets are already named correctly.
+   - This tab requires that the *custom* directory is writable and that
+     `MAIN_MODULE_DIR`/external-module uploads are enabled (they are by default).
+
+### Option B — extract on the server
+
+1. Extract the zip into your Dolibarr `htdocs/custom/` directory so the files live under
+   `htdocs/custom/swisspayments/` (or clone this repository to that path).
+
+### Enable and grant rights (both options)
+
+1. Open **Setup → Modules/Applications**, find **Swisspayments** in the *Financial*
+   section and click to enable it.
+2. Grant the module permissions to the relevant users:
    - **Rechnungen einlesen** — read/enter supplier bills.
    - **Rechnungen bezahlen** — generate payment files.
 
