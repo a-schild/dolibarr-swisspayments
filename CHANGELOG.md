@@ -7,6 +7,46 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.07.5] – 2026-07-10
+
+### Security
+- **Payment batches are now access-scoped (IDOR fix).** `llx_swisspayments_payh` gained a
+  `fk_user_author` owner column (set on creation). `dtafile.php` now only lets the batch's
+  creator — or an administrator — (re)generate/download its bank file; other users get
+  `accessforbidden()` instead of being able to grab another user's file by changing the id.
+
+### Added
+- **Multi-entity (multi-company) isolation.** All module tables
+  (`swisspayments_soc`, `swisspayments_factf`, `swisspayments_payh`,
+  `swisspayments_payl`) gained an `entity` column, populated with the active
+  `$conf->entity` on insert and filtered (`entity IN (...)`) on every read. On a
+  Dolibarr install running several companies the module's data is now isolated per
+  entity. Existing installs are migrated automatically on module re-activation (an
+  idempotent `ALTER TABLE` guarded by an information_schema check).
+- **Translation files** for German, French, Italian and English
+  (`langs/{de_DE,fr_FR,it_IT,en_US}/swisspayments.lang`). The module chrome (menu
+  entries, permission labels), the invoice-import wizard (`createinvoice.php`), the
+  payment list (`dtapayments.php`), the payment-file page (`dtafile.php`) and the
+  third-party ESR tab (`company_swisspayments.php`) now render through
+  `$langs->trans()` keys instead of hard-coded German literals.
+- **Per-bill creditor IBAN.** `swisspayments_factf` gained an `iban` column, filled from
+  the QR bill at import. `createDTA()` and the `dtapayments.php` payability gate now pay
+  each bill to the IBAN stored with it, instead of always using the supplier's *default*
+  bank account (`default_rib`). This fixes wrong-account payments when a supplier has
+  several bank accounts; legacy bills without a stored IBAN still fall back to the default
+  RIB. The supplier's `societe_rib` IBAN is still used, separately, to identify the
+  supplier from a scanned QR.
+- **Download button** for the generated bank payment file on `dtafile.php` — a prominent
+  action button with a download icon (and the file name), replacing the plain text link.
+
+### Removed
+- Deprecated legacy `swisspayments.php` entry page (raw `$_GET`/`$_POST`, predated the
+  QR-only flow in `createinvoice.php`). It was unreachable from any menu.
+
+### Fixed
+- `Swisspaymentspayl::fetch()` built an invalid `SELECT … ,  FROM` (trailing comma) and
+  passed its filter unescaped; the column list and id/`fk_payh` casts are corrected.
+
 ## [2026.07.4] – 2026-07-10
 
 ### Fixed

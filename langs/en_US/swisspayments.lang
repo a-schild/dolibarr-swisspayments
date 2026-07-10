@@ -1,0 +1,80 @@
+# Swisspayments language file - en_US
+# Copyright (C) 2016 Aarboard AG, Andre Schild, www.aarboard.ch
+
+# Module / chrome
+Module112001Name=Swiss payments
+Module112001Desc=Manage Swiss supplier payments (QR-bill import and ISO 20022 payment files)
+SwpMenuReadInvoice=Read invoice
+SwpMenuPayInvoice=Pay invoice
+SwpRightReadInvoices=Read/enter supplier bills
+SwpRightPayInvoices=Generate payment files
+SwpTabTitle=Swiss payments
+ReadESR=Read QR-bill
+
+# createinvoice.php
+SwpEnterSupplierInvoice=Enter supplier invoice
+SwpStepReadQr=Read QR code
+SwpStepSupplierInvoice=Supplier & invoice
+SwpQrBill=QR-bill
+SwpPayment=Payment
+SwpPostalAccount=Postal account
+SwpEsrId=ESR ID
+SwpRecipient=Recipient
+SwpAddress=Address
+SwpKnownSupplier=Known supplier
+SwpAssignExistingSupplier=Assign to an existing supplier
+SwpCreateSupplierFromQr=Create a new supplier from the QR data
+SwpQrReference=QR reference
+SwpInvoiceNumber=Invoice no.
+SwpInvoiceDate=Invoice date
+SwpDueDate=Payable until
+SwpValidateInvoice=Validate invoice
+SwpName=Name
+SwpStreetNo=Street / no.
+SwpZipTown=Zip / town
+SwpCountry=Country
+SwpRead=Read
+SwpCreateInvoice=Create invoice
+SwpAssignAndCreateInvoice=Assign & create invoice
+SwpCreateSupplier=Create supplier
+SwpScanWithPhone=Scan with your smartphone (no login required)
+SwpDefaultAccount=Default account
+SwpNoQrIbanRefOptional=No QR-IBAN - QR reference is optional (SCOR / no reference)
+SwpSetScannedIbanDefault=Set the scanned IBAN as the default bank account
+SwpIbanNotDefaultWarn=The IBAN of this bill (%s) is not the supplier's default bank account (%s). Otherwise the payment goes to the default account.
+SwpSupplierCreated=Supplier '%s' was created
+SwpReceivedFromPhone=Received from smartphone, reading ...
+SwpInvoiceRecorded=Invoice %s was recorded
+SwpAmountRequired=Please enter a valid amount (greater than 0)
+SwpInvoiceNumberRequired=Please enter an invoice number
+SwpZipTownRequired=Zip code and town are required (structured address)
+SwpInvoiceExists=Invoice no. %s already exists for this supplier
+SwpInvoiceExistsChange=Invoice no. %s already exists for this supplier, please change the invoice number
+SwpDuplicateCheckError=Error during duplicate check
+SwpMultipleAccountsSameIban=Multiple accounts with the same IBAN found (%s). Please assign the supplier manually.
+SwpDbError=Database error: %s
+
+# dtapayments.php
+SwpStillOpen=Still open
+SwpPay=Pay
+SwpPaymentDate=Payment date
+SwpEmptyMeansDueDate=Empty = due date
+SwpEsrLineOrIban=ESR line or IBAN + bank code
+SwpCreatePaymentFile=Create payment file
+SwpSkippedInfo=%s of %s invoice(s) will not be included in the payment file (missing or invalid payment data).
+SwpInvalidQrRef=Invalid QR reference
+SwpInvalidOrMissingIban=Invalid or missing IBAN
+SwpInvalidRefForIban=Invalid reference for this IBAN
+SwpMissingPaymentInfo=Payment information missing
+SwpIncompleteAddress=Address data incomplete (zip/town)
+
+# dtafile.php
+SwpBackToPaymentList=Back to payment list
+SwpDownloadPaymentFile=Download payment file
+SwpMissingPaymentId=Missing payment ID
+
+# company_swisspayments.php
+SwpEsrData=ESR data
+SwpStartInvoiceNo=Start invoice no.
+SwpEndInvoiceNo=End invoice no.
+SwpAction=Action

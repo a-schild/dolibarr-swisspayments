@@ -1,0 +1,80 @@
+# Swisspayments language file - de_DE
+# Copyright (C) 2016 Aarboard AG, Andre Schild, www.aarboard.ch
+
+# Module / chrome
+Module112001Name=Schweizer Zahlungen
+Module112001Desc=Verwaltung von Schweizer Lieferantenzahlungen (QR-Rechnung einlesen und ISO-20022-Zahlungsdateien)
+SwpMenuReadInvoice=Rechnung einlesen
+SwpMenuPayInvoice=Rechnung bezahlen
+SwpRightReadInvoices=Rechnungen einlesen
+SwpRightPayInvoices=Rechnungen bezahlen
+SwpTabTitle=Schweizer Zahlungen
+ReadESR=QR-Rechnung einlesen
+
+# createinvoice.php
+SwpEnterSupplierInvoice=Lieferantenrechnung erfassen
+SwpStepReadQr=QR-Code einlesen
+SwpStepSupplierInvoice=Lieferant & Rechnung
+SwpQrBill=QR-Rechnung
+SwpPayment=Zahlung
+SwpPostalAccount=PC Konto
+SwpEsrId=ESR ID
+SwpRecipient=Empfänger
+SwpAddress=Adresse
+SwpKnownSupplier=Bekannter Lieferant
+SwpAssignExistingSupplier=Bestehendem Lieferant zuweisen
+SwpCreateSupplierFromQr=Neuen Lieferant aus QR-Daten anlegen
+SwpQrReference=QR-Referenz
+SwpInvoiceNumber=Rechnung Nr.
+SwpInvoiceDate=Rechnungsdatum
+SwpDueDate=Zahlbar bis
+SwpValidateInvoice=Rechnung freigeben
+SwpName=Name
+SwpStreetNo=Strasse / Nr.
+SwpZipTown=PLZ / Ort
+SwpCountry=Land
+SwpRead=Einlesen
+SwpCreateInvoice=Rechnung erstellen
+SwpAssignAndCreateInvoice=Zuweisen & Rechnung erstellen
+SwpCreateSupplier=Lieferant anlegen
+SwpScanWithPhone=Mit dem Smartphone scannen (kein Login nötig)
+SwpDefaultAccount=Standard-Konto
+SwpNoQrIbanRefOptional=Keine QR-IBAN - QR-Referenz optional (SCOR/ohne Referenz)
+SwpSetScannedIbanDefault=Gescannte IBAN als Standard-Bankkonto setzen
+SwpIbanNotDefaultWarn=Die IBAN dieser Rechnung (%s) ist nicht das Standard-Bankkonto des Lieferanten (%s). Die Zahlung erfolgt sonst an das Standard-Konto.
+SwpSupplierCreated=Lieferant '%s' wurde angelegt
+SwpReceivedFromPhone=Vom Smartphone empfangen, wird eingelesen ...
+SwpInvoiceRecorded=Rechnung %s wurde erfasst
+SwpAmountRequired=Bitte einen gültigen Betrag (grösser als 0) erfassen
+SwpInvoiceNumberRequired=Bitte eine Rechnungsnummer erfassen
+SwpZipTownRequired=PLZ und Ort sind erforderlich (strukturierte Adresse)
+SwpInvoiceExists=Rechnung Nr. %s existiert für diesen Lieferanten schon
+SwpInvoiceExistsChange=Rechnung Nr. %s existiert für diesen Lieferanten schon, bitte Rechnungsnummer ändern
+SwpDuplicateCheckError=Fehler bei der Duplikatsprüfung
+SwpMultipleAccountsSameIban=Mehrere Konten mit gleicher IBAN gefunden (%s). Bitte Lieferant manuell zuweisen.
+SwpDbError=Datenbankfehler: %s
+
+# dtapayments.php
+SwpStillOpen=Noch offen
+SwpPay=Bezahlen
+SwpPaymentDate=Zahlungsdatum
+SwpEmptyMeansDueDate=Leer = Fälligkeitsdatum
+SwpEsrLineOrIban=ESR Zeile oder IBAN + BLZ
+SwpCreatePaymentFile=Zahlungsdatei erstellen
+SwpSkippedInfo=%s von %s Rechnung(en) werden nicht in die Zahlungsdatei aufgenommen (fehlende oder ungültige Zahlungsinformationen).
+SwpInvalidQrRef=Ungültige QR-Referenz
+SwpInvalidOrMissingIban=Ungültige oder fehlende IBAN
+SwpInvalidRefForIban=Ungültige Referenz für diese IBAN
+SwpMissingPaymentInfo=Zahlungsinformationen fehlen
+SwpIncompleteAddress=Adressdaten unvollständig (PLZ/Ort)
+
+# dtafile.php
+SwpBackToPaymentList=Zur Zahlungsliste
+SwpDownloadPaymentFile=Zahlungsdatei herunterladen
+SwpMissingPaymentId=Fehlende Zahlungs-ID
+
+# company_swisspayments.php
+SwpEsrData=ESR Daten
+SwpStartInvoiceNo=Start Rech.Nr.
+SwpEndInvoiceNo=Ende Rech.Nr.
+SwpAction=Aktion

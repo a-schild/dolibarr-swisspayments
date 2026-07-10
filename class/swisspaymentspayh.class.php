@@ -91,6 +91,8 @@ class Swisspaymentspayh extends CommonObject {
     var $element = 'swisspaymentspayh';   //!< Id that identify managed objects
     var $table_element = 'swisspayments_payh';  //!< Name of table without prefix where object is stored
     var $id;
+    var $entity;    // Dolibarr entity (multi-company isolation)
+    var $fk_user_author; // User who created the batch (access scoping)
     var $payident;  // Payment identifier
     var $datec;     // Date created
     var $dtafile;   // DTA file with payment "commands"
@@ -146,6 +148,8 @@ class Swisspaymentspayh extends CommonObject {
         // Insert request
         $sql = "INSERT INTO " . MAIN_DB_PREFIX . $this->table_element . "(";
 
+        $sql.= "entity,";
+        $sql.= "fk_user_author,";
         $sql.= "payident,";
         $sql.= "datec,";
         $sql.= "dtafile";
@@ -153,6 +157,8 @@ class Swisspaymentspayh extends CommonObject {
 
         $sql.= ") VALUES (";
 
+        $sql.= " " . ((int) $conf->entity) . ",";
+        $sql.= " " . ((isset($user) && $user->id > 0) ? ((int) $user->id) : 'NULL') . ",";
         $sql.= " " . (!isset($this->payident) ? 'NULL' : "'" . $this->db->escape($this->payident) . "'") . ",";
         $sql.= " '" . $this->db->idate($now) . "',";
         $sql.= " " . (!isset($this->dtafile) ? 'NULL' : "'" . $this->db->escape($this->dtafile) . "'");
@@ -206,7 +212,8 @@ class Swisspaymentspayh extends CommonObject {
         global $langs;
         $sql = "SELECT";
         $sql.= " t.rowid,";
-
+        $sql.= " t.entity,";
+        $sql.= " t.fk_user_author,";
         $sql.= " t.payident,";
         $sql.= " t.datec,";
         $sql.= " t.dtafile";
@@ -217,6 +224,8 @@ class Swisspaymentspayh extends CommonObject {
             $sql.= " WHERE t.payident = '" . $this->db->escape($payident) . "'";
         else
             $sql.= " WHERE t.rowid = " . ((int) $id);
+        // Restrict to the current entity (multi-company isolation).
+        $sql.= " AND t.entity IN (" . getEntity($this->element) . ")";
 
         dol_syslog(get_class($this) . "::fetch");
         $resql = $this->db->query($sql);
@@ -225,7 +234,8 @@ class Swisspaymentspayh extends CommonObject {
                 $obj = $this->db->fetch_object($resql);
 
                 $this->id = $obj->rowid;
-
+                $this->entity = $obj->entity;
+                $this->fk_user_author = $obj->fk_user_author;
                 $this->payident = $obj->payident;
                 $this->datec = $this->db->jdate($obj->datec);
                 $this->dtafile = $obj->dtafile;
@@ -632,7 +642,14 @@ class Swisspaymentspayh extends CommonObject {
                                     //  - normal IBAN + Creditor Reference (SCOR/RF) -> BankCreditTransferWithCreditorReference
                                     //  - normal IBAN + no reference (NON)           -> plain BankCreditTransfer
                                     // The creditor agent (IID) is derived from the CH/LI IBAN in all cases.
-                                    $iban= new IBAN($defaultRIB->iban);
+                                    // Use the IBAN stored with THIS bill (from the QR at import time); this
+                                    // is the correct creditor account even when the supplier has several
+                                    // bank accounts. Fall back to the default RIB for legacy bills imported
+                                    // before the per-bill IBAN was stored.
+                                    $billIban= (isset($factf->iban) && trim((string) $factf->iban) !== '')
+                                            ? $factf->iban
+                                            : (isset($defaultRIB->iban) ? $defaultRIB->iban : '');
+                                    $iban= new IBAN($billIban);
                                     $qrRef= trim((string) $factf->esrline);
                                     $amountCHF= new Money\CHF(round(floatval($paiement->montant)*100.0));
                                     $isQrIban= (bool) preg_match('/^(CH|LI)[0-9]{2}3/', $iban->normalize());

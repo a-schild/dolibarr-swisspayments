@@ -24,11 +24,14 @@ class Swisspaymentsfactf extends CommonObject
 	var $table_element='swisspayments_factf';		//!< Name of table without prefix where object is stored
 
         var $id;
-    
+
+	var $entity;
 	var $fk_factid;
 	var $esrline;
         var $esrpartynr;
         var $esrrefnr;
+        var $iban;      // Creditor IBAN of THIS bill (from the QR), so payment uses the
+                        // correct account even when the supplier has several bank accounts
 
     
 
@@ -63,27 +66,32 @@ class Swisspaymentsfactf extends CommonObject
 		if (isset($this->esrline)) $this->esrline=trim($this->esrline);
 		if (isset($this->esrpartynr)) $this->esrpartynr=trim($this->esrpartynr);
 		if (isset($this->esrrefnr)) $this->esrrefnr=trim($this->esrrefnr);
-        
+		if (isset($this->iban)) $this->iban=trim(str_replace(' ', '', $this->iban));
+
 
 		// Check parameters
 		// Put here code to add control on parameters values
 
         // Insert request
 		$sql = "INSERT INTO ".MAIN_DB_PREFIX.$this->table_element."(";
-		
+
+		$sql.= "entity,";
 		$sql.= "fk_factid,";
 		$sql.= "esrline,";
 		$sql.= "esrpartynr,";
-		$sql.= "esrrefnr";
+		$sql.= "esrrefnr,";
+		$sql.= "iban";
 
-		
+
         $sql.= ") VALUES (";
-        
+
+		$sql.= " ".((int) $conf->entity).",";
 		$sql.= " ".(! isset($this->fk_factid)?'NULL':((int) $this->fk_factid)).",";
 		$sql.= " ".(! isset($this->esrline)?'NULL':"'".$this->db->escape(str_replace("\n", "\\n", str_replace("\r", "",$this->esrline)))."'").",";
 		$sql.= " ".(! isset($this->esrpartynr)?"'QRBILL'":"'". $this->db->escape($this->esrpartynr)."'").",";
-		$sql.= " ".(! isset($this->esrrefnr)?"'QRBILL'":"'".$this->db->escape($this->esrrefnr)."'");
-        
+		$sql.= " ".(! isset($this->esrrefnr)?"'QRBILL'":"'".$this->db->escape($this->esrrefnr)."'").",";
+		$sql.= " ".(empty($this->iban)?'NULL':"'".$this->db->escape($this->iban)."'");
+
 		$sql.= ")";
 
 		$this->db->begin();
@@ -138,11 +146,12 @@ class Swisspaymentsfactf extends CommonObject
     	global $langs;
         $sql = "SELECT";
 		$sql.= " t.rowid,";
-		
+		$sql.= " t.entity,";
 		$sql.= " t.fk_factid,";
 		$sql.= " t.esrline,";
                 $sql.= " t.esrpartynr,";
-                $sql.= " t.esrrefnr";
+                $sql.= " t.esrrefnr,";
+                $sql.= " t.iban";
 
 		
         $sql.= " FROM ".MAIN_DB_PREFIX.$this->table_element." as t";
@@ -158,6 +167,8 @@ class Swisspaymentsfactf extends CommonObject
         {
             $sql.= " WHERE t.rowid = ".((int) $id);
         }
+        // Restrict to the current entity (multi-company isolation).
+        $sql.= " AND t.entity IN (".getEntity($this->element).")";
 
     	dol_syslog(get_class($this)."::fetch");
         $resql=$this->db->query($sql);
@@ -169,10 +180,12 @@ class Swisspaymentsfactf extends CommonObject
 
                 $this->id    = $obj->rowid;
                 
+				$this->entity = $obj->entity;
 				$this->fk_factid = $obj->fk_factid;
 				$this->esrline = $obj->esrline;
 				$this->esrpartynr = $obj->esrpartynr;
 				$this->esrrefnr = $obj->esrrefnr;
+				$this->iban = $obj->iban;
             }
             $this->db->free($resql);
 
@@ -214,7 +227,8 @@ class Swisspaymentsfactf extends CommonObject
 		$sql.= " fk_factid=".(isset($this->fk_factid)?((int) $this->fk_factid):"null").",";
 		$sql.= " esrline=".(isset($this->esrline)?"'".$this->db->escape($this->esrline)."'":"null").",";
 		$sql.= " esrpartynr=".(isset($this->esrpartynr)?"'".$this->db->escape($this->esrpartynr)."'":"null").",";
-		$sql.= " esrrefnr=".(isset($this->esrrefnr)?"'".$this->db->escape($this->esrrefnr)."'":"null");
+		$sql.= " esrrefnr=".(isset($this->esrrefnr)?"'".$this->db->escape($this->esrrefnr)."'":"null").",";
+		$sql.= " iban=".(empty($this->iban)?"null":"'".$this->db->escape(str_replace(' ', '', $this->iban))."'");
         
         $sql.= " WHERE rowid=".$this->id;
 

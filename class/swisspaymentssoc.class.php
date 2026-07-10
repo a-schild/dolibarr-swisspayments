@@ -27,7 +27,8 @@ class Swisspaymentssoc extends CommonObject
 	var $table_element='swisspayments_soc';		//!< Name of table without prefix where object is stored
 
     var $id;
-    
+
+	var $entity;
 	var $fk_societe;
 	var $pcaccount;
 	var $esrid;
@@ -75,16 +76,18 @@ class Swisspaymentssoc extends CommonObject
 
         // Insert request
 		$sql = "INSERT INTO ".MAIN_DB_PREFIX.$this->table_element."(";
-		
+
+		$sql.= "entity,";
 		$sql.= "fk_societe,";
 		$sql.= "pcaccount,";
 		$sql.= "esrid,";
                 $sql.= "startorderno,";
                 $sql.= "endorderno";
 
-		
+
         $sql.= ") VALUES (";
-        
+
+		$sql.= " ".((int) $conf->entity).",";
 		$sql.= " ".(! isset($this->fk_societe)?'NULL':((int) $this->fk_societe)).",";
 		$sql.= " ".(! isset($this->pcaccount)?'NULL':"'".$this->db->escape($this->pcaccount)."'").",";
 		$sql.= " ".(! isset($this->esrid)?'NULL':"'".$this->db->escape($this->esrid)."'").",";
@@ -150,7 +153,7 @@ class Swisspaymentssoc extends CommonObject
     	global $langs;
         $sql = "SELECT";
 		$sql.= " t.rowid,";
-		
+		$sql.= " t.entity,";
 		$sql.= " t.fk_societe,";
 		$sql.= " t.pcaccount,";
 		$sql.= " t.esrid,";
@@ -163,6 +166,8 @@ class Swisspaymentssoc extends CommonObject
         else if ($socid) $sql.= " WHERE t.fk_societe = '".$this->db->escape($socid)."' AND t.esrid = 'QRBILL'";
         else if ($pcAccount) $sql.= " WHERE t.pcaccount = '".$this->db->escape($pcAccount)."' AND t.esrid = '".$this->db->escape($esrid)."'";
         else $sql.= " WHERE t.rowid = ".((int) $id);
+        // Restrict to the current entity (multi-company isolation).
+        $sql.= " AND t.entity IN (".getEntity($this->element).")";
 
     	dol_syslog(get_class($this)."::fetch");
         $resql=$this->db->query($sql);
@@ -177,6 +182,7 @@ class Swisspaymentssoc extends CommonObject
 				$this->fk_societe = $obj->fk_societe;
 				$this->pcaccount = $obj->pcaccount;
 				$this->esrid = $obj->esrid;
+                                $this->entity= $obj->entity;
                                 $this->startorderno= $obj->startorderno;
                                 $this->endorderno= $obj->endorderno;
             }

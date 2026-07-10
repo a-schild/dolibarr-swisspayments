@@ -1,0 +1,80 @@
+# Swisspayments language file - fr_FR
+# Copyright (C) 2016 Aarboard AG, Andre Schild, www.aarboard.ch
+
+# Module / chrome
+Module112001Name=Paiements suisses
+Module112001Desc=Gestion des paiements fournisseurs suisses (import de QR-facture et fichiers de paiement ISO 20022)
+SwpMenuReadInvoice=Lire une facture
+SwpMenuPayInvoice=Payer une facture
+SwpRightReadInvoices=Lire/saisir les factures fournisseurs
+SwpRightPayInvoices=Générer les fichiers de paiement
+SwpTabTitle=Paiements suisses
+ReadESR=Lire la QR-facture
+
+# createinvoice.php
+SwpEnterSupplierInvoice=Saisir une facture fournisseur
+SwpStepReadQr=Lire le code QR
+SwpStepSupplierInvoice=Fournisseur et facture
+SwpQrBill=QR-facture
+SwpPayment=Paiement
+SwpPostalAccount=Compte postal
+SwpEsrId=Identifiant ESR
+SwpRecipient=Bénéficiaire
+SwpAddress=Adresse
+SwpKnownSupplier=Fournisseur connu
+SwpAssignExistingSupplier=Attribuer à un fournisseur existant
+SwpCreateSupplierFromQr=Créer un nouveau fournisseur à partir des données QR
+SwpQrReference=Référence QR
+SwpInvoiceNumber=Facture n°
+SwpInvoiceDate=Date de facture
+SwpDueDate=Payable jusqu'au
+SwpValidateInvoice=Valider la facture
+SwpName=Nom
+SwpStreetNo=Rue / n°
+SwpZipTown=NPA / localité
+SwpCountry=Pays
+SwpRead=Lire
+SwpCreateInvoice=Créer la facture
+SwpAssignAndCreateInvoice=Attribuer et créer la facture
+SwpCreateSupplier=Créer le fournisseur
+SwpScanWithPhone=Scanner avec votre smartphone (aucune connexion requise)
+SwpDefaultAccount=Compte par défaut
+SwpNoQrIbanRefOptional=Pas de QR-IBAN - référence QR facultative (SCOR / sans référence)
+SwpSetScannedIbanDefault=Définir l'IBAN scanné comme compte bancaire par défaut
+SwpIbanNotDefaultWarn=L'IBAN de cette facture (%s) n'est pas le compte bancaire par défaut du fournisseur (%s). Sinon le paiement est effectué sur le compte par défaut.
+SwpSupplierCreated=Le fournisseur '%s' a été créé
+SwpReceivedFromPhone=Reçu du smartphone, lecture en cours ...
+SwpInvoiceRecorded=La facture %s a été enregistrée
+SwpAmountRequired=Veuillez saisir un montant valide (supérieur à 0)
+SwpInvoiceNumberRequired=Veuillez saisir un numéro de facture
+SwpZipTownRequired=Le NPA et la localité sont requis (adresse structurée)
+SwpInvoiceExists=La facture n° %s existe déjà pour ce fournisseur
+SwpInvoiceExistsChange=La facture n° %s existe déjà pour ce fournisseur, veuillez changer le numéro de facture
+SwpDuplicateCheckError=Erreur lors de la vérification des doublons
+SwpMultipleAccountsSameIban=Plusieurs comptes avec le même IBAN trouvés (%s). Veuillez attribuer le fournisseur manuellement.
+SwpDbError=Erreur de base de données : %s
+
+# dtapayments.php
+SwpStillOpen=Encore ouvert
+SwpPay=Payer
+SwpPaymentDate=Date de paiement
+SwpEmptyMeansDueDate=Vide = date d'échéance
+SwpEsrLineOrIban=Ligne ESR ou IBAN + code banque
+SwpCreatePaymentFile=Créer le fichier de paiement
+SwpSkippedInfo=%s facture(s) sur %s ne seront pas incluses dans le fichier de paiement (données de paiement manquantes ou invalides).
+SwpInvalidQrRef=Référence QR invalide
+SwpInvalidOrMissingIban=IBAN invalide ou manquant
+SwpInvalidRefForIban=Référence invalide pour cet IBAN
+SwpMissingPaymentInfo=Informations de paiement manquantes
+SwpIncompleteAddress=Données d'adresse incomplètes (NPA/localité)
+
+# dtafile.php
+SwpBackToPaymentList=Vers la liste des paiements
+SwpDownloadPaymentFile=Télécharger le fichier de paiement
+SwpMissingPaymentId=Identifiant de paiement manquant
+
+# company_swisspayments.php
+SwpEsrData=Données ESR
+SwpStartInvoiceNo=N° facture début
+SwpEndInvoiceNo=N° facture fin
+SwpAction=Action

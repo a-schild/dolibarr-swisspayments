@@ -10,6 +10,8 @@ Payment header file
 
 CREATE TABLE IF NOT EXISTS llx_swisspayments_payh (
 rowid INT NOT NULL AUTO_INCREMENT ,
+entity INTEGER DEFAULT 1 NOT NULL,
+fk_user_author INT,
 payident CHAR(80) NOT NULL,
 datec DATETIME,
 tms TIMESTAMP NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,

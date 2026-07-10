@@ -82,16 +82,16 @@ dol_htmloutput_mesg($msg, null, 'valid');
 	print "<br/> <br/>";
 	
 	$var = false;
-        print '<h1>ESR Daten</h1>';
+        print '<h1>'.$langs->trans('SwpEsrData').'</h1>';
 	print '<table class="noborder" width="100%">';
 	print '<tr class="liste_titre">';
-	print '  <td >Postkonto</td>';
-	print '  <td >ESR ID</td>';
-	print '  <td >Start Rech.Nr.</td>';
-	print '  <td >Ende Rech.Nr</td>';
-	print '  <td >Aktion</td></tr>';
+	print '  <td >'.$langs->trans('SwpPostalAccount').'</td>';
+	print '  <td >'.$langs->trans('SwpEsrId').'</td>';
+	print '  <td >'.$langs->trans('SwpStartInvoiceNo').'</td>';
+	print '  <td >'.$langs->trans('SwpEndInvoiceNo').'</td>';
+	print '  <td >'.$langs->trans('SwpAction').'</td></tr>';
 
-        $resql=$db->query("select * from llx_swisspayments_soc where fk_societe=" . $socid);
+        $resql=$db->query("select * from ".MAIN_DB_PREFIX."swisspayments_soc where fk_societe=" . ((int) $socid) . " AND entity IN (".getEntity('swisspaymentssoc').")");
         if ($resql)
         {
                 $num = $db->num_rows($resql);
