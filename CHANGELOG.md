@@ -21,8 +21,8 @@ uses date‑based versions (`YYYY.M`).
   `swisspayments_payl`) gained an `entity` column, populated with the active
   `$conf->entity` on insert and filtered (`entity IN (...)`) on every read. On a
   Dolibarr install running several companies the module's data is now isolated per
-  entity. Existing installs are migrated automatically on module re-activation (an
-  idempotent `ALTER TABLE` guarded by an information_schema check).
+  entity. Existing installs are migrated automatically (see "Automatic schema migration
+  on update" below).
 - **Translation files** for German, French, Italian and English
   (`langs/{de_DE,fr_FR,it_IT,en_US}/swisspayments.lang`). The module chrome (menu
   entries, permission labels), the invoice-import wizard (`createinvoice.php`), the
@@ -46,6 +46,11 @@ uses date‑based versions (`YYYY.M`).
   having to disable/re-enable the module. The migration itself (`swisspayments_migrate_tables()`)
   is shared with the descriptor's `init()`, so activation and the runtime guard apply
   exactly the same changes.
+
+### Changed
+- The "back to payment list" link on `dtafile.php` now points to the supplier payments
+  list (`/fourn/paiement/list.php?leftmenu=suppliers_bills_payment`) instead of
+  `/fourn/facture/paiement.php`, so it lands on the right page with the matching left menu.
 
 ### Removed
 - Deprecated legacy `swisspayments.php` entry page (raw `$_GET`/`$_POST`, predated the
