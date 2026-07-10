@@ -70,4 +70,5 @@ Two parallel families of generator classes produce the outbound payment file:
 - **Language**: user-facing strings are a mix of `$langs->trans('Key')` and hard-coded **German** literals (e.g. `"Lieferantenrechnung erfassen"`). There are currently **no `.lang` files shipped** in the repo despite `$langs->load("swisspayments@swisspayments")` calls. Match the surrounding style of the file you edit.
 - **Logging**: use `dol_syslog(__METHOD__ . " ...", LOG_DEBUG|LOG_INFO|LOG_WARNING)` as the existing parser does.
 - **Errors**: accumulate an `$error` counter and surface via `setEventMessage(..., 'errors')` or `dol_htmloutput_errors($mesg)`, matching existing pages.
-- No CHANGELOG file exists; the README is minimal. History/versioning lives in git and the descriptor's `$this->version`.
+- History/versioning: `CHANGELOG.md` (Keep a Changelog, date-based `YYYY.MM.n` versions) plus git tags; the version single source of truth is `modSwisspayments.class.php`'s `const VERSION`.
+- **Open work / known issues live in [`todo.md`](todo.md)** — tracked items that aren't quick code fixes (e.g. batch-file IDOR and multi-entity isolation both needing schema changes, deprecated legacy pages, missing `.lang` files). Consult it before starting non-trivial work, and keep it in sync when you close or add an item.
