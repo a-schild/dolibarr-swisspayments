@@ -78,6 +78,10 @@ if ($user->societe_id > 0) {
 
 if (! $user->rights->swisspayments->paydta) accessforbidden();
 
+// Apply any pending DB schema migration after a plain file/zip update (no module
+// disable/re-enable needed). No-op once the schema-version constant is up to date.
+swisspayments_check_db_version($db, $conf);
+
 $socid=GETPOST('socid','int');
 $option = GETPOST('option');
 
@@ -259,13 +263,13 @@ if ($user->rights->fournisseur->facture->lire)
 	$sql.= " f.paye as paye, f.rowid as facid, f.fk_statut";
 	$sql.= " ,sum(pf.amount) as am";
 	$sql.= " ,f.total_ht-IFNULL(sum(pf.amount),0) as stilltopay";
-	$sql.= " ,sff.esrpartynr, sff.esrline, sr.rowid as ribid, sr.iban_prefix, sr.bic ";
+	$sql.= " ,sff.esrpartynr, sff.esrline, sff.iban as billiban, sr.rowid as ribid, sr.iban_prefix, sr.bic ";
 	if (! $user->rights->societe->client->voir && ! $socid) $sql .= ", sc.fk_soc, sc.fk_user ";
 	$sql.= " FROM ".MAIN_DB_PREFIX."societe as s";
 	if (! $user->rights->societe->client->voir && ! $socid) $sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."facture_fourn as f on  f.fk_soc = s.rowid";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."paiementfourn_facturefourn as pf ON f.rowid=pf.fk_facturefourn ";
-	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."swisspayments_factf as sff ON f.rowid=sff.fk_factid ";
+	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."swisspayments_factf as sff ON f.rowid=sff.fk_factid AND sff.entity IN (".getEntity('swisspaymentsfactf').") ";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe_rib sr ON s.rowid=sr.fk_soc and default_rib=1 ";
 	$sql.= " WHERE f.entity = ".$conf->entity;
 	$sql.= " AND f.fk_soc = s.rowid";
@@ -378,8 +382,8 @@ if ($user->rights->fournisseur->facture->lire)
 		print_liste_field_titre($langs->trans("AmountHT"),$_SERVER["PHP_SELF"],"f.total_ht","",$param,'align="right"',$sortfield,$sortorder);
 		print_liste_field_titre($langs->trans("AmountTTC"),$_SERVER["PHP_SELF"],"f.total_ttc","",$param,'align="right"',$sortfield,$sortorder);
 		print_liste_field_titre($langs->trans("AlreadyPaid"),$_SERVER["PHP_SELF"],"am","",$param,'align="right"',$sortfield,$sortorder);
-		print_liste_field_titre($langs->trans("Noch offen"),$_SERVER["PHP_SELF"],"am","",$param,'align="right"',$sortfield,$sortorder);
-		print_liste_field_titre($langs->trans("Bezahlen"),$_SERVER["PHP_SELF"],"am","",$param,'align="right"',$sortfield,$sortorder);
+		print_liste_field_titre($langs->trans("SwpStillOpen"),$_SERVER["PHP_SELF"],"am","",$param,'align="right"',$sortfield,$sortorder);
+		print_liste_field_titre($langs->trans("SwpPay"),$_SERVER["PHP_SELF"],"am","",$param,'align="right"',$sortfield,$sortorder);
 		print_liste_field_titre($langs->trans("Status"),$_SERVER["PHP_SELF"],"fk_statut,paye,am","",$param,'align="right"',$sortfield,$sortorder);
 		//print_liste_field_titre("Bezahlen");
 		print "</tr>\n";
@@ -437,7 +441,10 @@ if ($user->rights->fournisseur->facture->lire)
                                 $isQRBill= ($objp->esrpartynr == "QRBILL");
                                 $esrline= trim((string) $objp->esrline);
                                 $validQRR= preg_match('/^[0-9]{1,27}$/', $esrline) && isValidCheckDigit($esrline);
-                                $qrIban= strtoupper(str_replace(' ', '', (string) $objp->iban_prefix));
+                                // Prefer the IBAN stored with this bill (mirrors Swisspaymentspayh::createDTA);
+                                // fall back to the supplier's default RIB for legacy bills without one.
+                                $creditorIban= trim((string) $objp->billiban) !== '' ? $objp->billiban : $objp->iban_prefix;
+                                $qrIban= strtoupper(str_replace(' ', '', (string) $creditorIban));
                                 $isQRIBAN= preg_match('/^(CH|LI)[0-9]{2}3/', $qrIban);
                                 $isChLiIban= preg_match('/^(CH|LI)[0-9]{2}/', $qrIban);
                                 $isScorRef= isValidScor($esrline);   // RF + valid ISO 11649 mod-97 check digit
@@ -506,28 +513,28 @@ if ($user->rights->fournisseur->facture->lire)
                                 }
                                 else if ($isQRBill && $qrReason == 'qrr')
                                 {
-                                    print "Ungültige QR-Referenz";
+                                    print $langs->trans("SwpInvalidQrRef");
                                     print img_warning("QR reference is invalid");
                                 }
                                 else if ($isQRBill && $qrReason == 'noiban')
                                 {
-                                    print "Ungültige oder fehlende IBAN";
+                                    print $langs->trans("SwpInvalidOrMissingIban");
                                     print img_warning("A valid CH/LI creditor IBAN is required");
                                 }
                                 else if ($isQRBill && $qrReason == 'ref')
                                 {
-                                    print "Ungültige Referenz für diese IBAN";
+                                    print $langs->trans("SwpInvalidRefForIban");
                                     print img_warning("A normal IBAN needs a SCOR (RF) reference or none");
                                 }
                                 else if (!$canPayInfo)
                                 {
-                                    print "Zahlungsinformationen fehlen";
-                                    print img_warning($langs->trans("ESR Zeile oder IBAN + BLZ"));
+                                    print $langs->trans("SwpMissingPaymentInfo");
+                                    print img_warning($langs->trans("SwpEsrLineOrIban"));
                                 }
                                 else
                                 {
                                     // Payment info is fine but the structured address is incomplete.
-                                    print "Adressdaten unvollständig (PLZ/Ort)";
+                                    print $langs->trans("SwpIncompleteAddress");
                                     print img_warning("Postal code and town are required for the structured address");
                                 }
                                 print "</td>";
@@ -581,9 +588,9 @@ if ($user->rights->fournisseur->facture->lire)
                     print '<table class="border" width="100%">';
 
                     print '<tr class="liste_titre"><td colspan="3">'.$langs->trans('Payment').'</td>';
-                    print '<tr><td >'.$langs->trans('Zahlungsdatum').'</td><td>';
+                    print '<tr><td >'.$langs->trans('SwpPaymentDate').'</td><td>';
                     $form->select_date('','re',0, 0,1,"",1,1);
-                    print 'Leer = Fälligkeitsdatum</td>';
+                    print $langs->trans('SwpEmptyMeansDueDate').'</td>';
                     print '<td>'.$langs->trans('Comments').'</td></tr>';
                     print '<tr><td class="fieldrequired">'.$langs->trans('PaymentMode').'</td><td>';
                     $form->select_types_paiements(empty($_POST['paiementid'])?'2':$_POST['paiementid'],'paiementid');
@@ -607,13 +614,13 @@ if ($user->rights->fournisseur->facture->lire)
                     {
                         print '<div class="warning">';
                         print img_warning();
-                        print ' '.$skipped_count.' von '.$num.' Rechnung(en) werden nicht in die Zahlungsdatei aufgenommen (fehlende oder ungültige Zahlungsinformationen).';
+                        print ' '.$langs->trans('SwpSkippedInfo', $skipped_count, $num);
                         print '</div>';
                     }
 
                     print '	<div class="tabsAction">';
                     // print $langs->trans('DateInvoice'). ' : ';
-                    print ' <input style="margin-left:20px" type="submit" class="butAction" name="createDTAPay" value="Zahlungsdatei erstellen">';
+                    print ' <input style="margin-left:20px" type="submit" class="butAction" name="createDTAPay" value="'.dol_escape_htmltag($langs->trans('SwpCreatePaymentFile')).'">';
                     print ' <input type="hidden" value="' . $fact_ids . '" name="factures" >';
                     print '	</div>';
                 }

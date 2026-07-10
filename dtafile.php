@@ -84,6 +84,10 @@ if (!$user->rights->swisspayments->paydta->dopay) {
 	accessforbidden();
 }
 
+// Apply any pending DB schema migration after a plain file/zip update (no module
+// disable/re-enable needed). No-op once the schema-version constant is up to date.
+swisspayments_check_db_version($db, $conf);
+
 $socid=GETPOST('socid','int');
 $option = GETPOST('option');
 
@@ -99,6 +103,14 @@ if (isset($_REQUEST["payh"]))
     
     $payh= new Swisspaymentspayh($db);
     $result= $payh->fetch($_REQUEST["payh"]);
+    // Access scoping: fetch() already restricts to the current entity. A batch may only
+    // be (re)generated/downloaded by the user who created it, or by an admin. This closes
+    // the IDOR where any paydta user could grab another user's bank file by changing the id.
+    if ($result >= 0 && (empty($payh->id)
+            || ($payh->fk_user_author && $payh->fk_user_author != $user->id && empty($user->admin))))
+    {
+        accessforbidden();
+    }
     if ($result >= 0)
     {
         try
@@ -136,7 +148,7 @@ if (isset($_REQUEST["payh"]))
 else
 {
         $error++;
-        setEventMessage("Missing payment ID", 'errors');
+        setEventMessage($langs->trans('SwpMissingPaymentId'), 'errors');
 }
 
 
@@ -157,8 +169,17 @@ if ($error > 0)
 }
 else
 {
-    echo "<div><a href='".DOL_URL_ROOT.'/fourn/facture/paiement.php' ."'>Zur Zahlungsliste</a></div>";
-    echo "<div><a href='".DOL_URL_ROOT.'/document.php?modulepart=swisspayments&file=dtafiles/'. $dtaFile ."'>DTA File herunterladen</a></div>";
+    $downloadUrl = DOL_URL_ROOT.'/document.php?modulepart=swisspayments&file='.urlencode('dtafiles/'.$dtaFile);
+
+    // Prominent download button with a download icon for the generated bank payment file.
+    echo '<div class="center" style="margin:18px 0;">';
+    echo '<a class="butAction" href="'.$downloadUrl.'">';
+    echo img_picto($langs->trans('SwpDownloadPaymentFile'), 'download', 'class="paddingright"');
+    echo dol_escape_htmltag($langs->trans('SwpDownloadPaymentFile')).' ('.dol_escape_htmltag($dtaFile).')';
+    echo '</a>';
+    echo '</div>';
+
+    echo "<div class='center'><a href='".DOL_URL_ROOT."/fourn/paiement/list.php?leftmenu=suppliers_bills_payment'>".$langs->trans('SwpBackToPaymentList')."</a></div>";
 }
 
 // End of page

@@ -12,6 +12,7 @@ Payed invoices line by line
 
 CREATE TABLE IF NOT EXISTS llx_swisspayments_payl (
 rowid INT NOT NULL AUTO_INCREMENT ,
+entity INTEGER DEFAULT 1 NOT NULL,
 fk_payh INT NOT NULL,
 fk_payementfourn INT NOT NULL,
 datec DATETIME,

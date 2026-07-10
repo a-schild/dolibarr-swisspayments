@@ -19,7 +19,7 @@ class modswisspayments extends DolibarrModules
 {
 
 	/** Current module version (single source of truth; bump on each release). */
-	const VERSION = '2026.07.4';
+	const VERSION = '2026.07.5';
 
 	/**
 	 * 	Constructor. Define names, constants, directories, boxes, permissions
@@ -255,7 +255,7 @@ class modswisspayments extends DolibarrModules
 		//// Permission id (must not be already used)
 		$this->rights[$r][0] = $this->numero*10+1;
 		//// Permission label
-		$this->rights[$r][1] = 'Rechnungen einlesen';
+		$this->rights[$r][1] = 'SwpRightReadInvoices';
 		//// Permission by default for new user (0/1)
 		$this->rights[$r][3] = 0;
 		//// In php code, permission will be checked by test
@@ -269,7 +269,7 @@ class modswisspayments extends DolibarrModules
 		//// Permission id (must not be already used)
 		$this->rights[$r][0] = $this->numero*10+2;
 		//// Permission label
-		$this->rights[$r][1] = 'Rechnungen bezahlen';
+		$this->rights[$r][1] = 'SwpRightPayInvoices';
 		//// Permission by default for new user (0/1)
 		$this->rights[$r][3] = 0;
 		//// In php code, permission will be checked by test
@@ -374,7 +374,7 @@ class modswisspayments extends DolibarrModules
 
                 $this->menu[$r]=array('fk_menu'=>'fk_mainmenu=billing,fk_leftmenu=suppliers_bills',
                   'type'=>'left',                             // This is a Left menu entry
-                  'titre'=>'Rechnung einlesen',
+                  'titre'=>'SwpMenuReadInvoice',
                   'mainmenu'=>'billing',
                   'leftmenu'=>'swisspayments',
                   'url'=>'/swisspayments/createinvoice.php',
@@ -387,7 +387,7 @@ class modswisspayments extends DolibarrModules
 
                 $this->menu[$r]=array('fk_menu'=>'fk_mainmenu=billing,fk_leftmenu=suppliers_bills',
                   'type'=>'left',                             // This is a Left menu entry
-                  'titre'=>'Rechnung bezahlen',
+                  'titre'=>'SwpMenuPayInvoice',
                   'mainmenu'=>'billing',
                   'leftmenu'=>'swisspayments',
                   'url'=>'/swisspayments/dtapayments.php',
@@ -506,6 +506,8 @@ class modswisspayments extends DolibarrModules
 	 */
 	public function init($options = '')
 	{
+		global $conf;
+
 		$sql = array();
 
                 $dtaPath= DOL_DATA_ROOT . "/swisspayments/dtafiles/";
@@ -513,10 +515,21 @@ class modswisspayments extends DolibarrModules
                 {
                     mkdir($dtaPath,0777,true);
                 }
-                
+
 		$result = $this->loadTables();
 
-                
+		// Bring the tables of an already-installed module up to date (CREATE TABLE IF NOT
+		// EXISTS above never alters an existing table). The shared, idempotent migration
+		// is also used by the runtime auto-migration guard (swisspayments_check_db_version),
+		// so both paths apply the exact same schema changes.
+		dol_include_once('/swisspayments/lib/swisspayments.lib.php');
+		if (function_exists('swisspayments_migrate_tables')) {
+			swisspayments_migrate_tables($this->db);
+		}
+		// Record the schema version so the runtime guard is a no-op after a proper
+		// (re)activation.
+		dolibarr_set_const($this->db, 'SWISSPAYMENTS_DB_VERSION', self::VERSION, 'chaine', 0, '', $conf->entity);
+
 		return $this->_init($sql, $options);
 	}
 

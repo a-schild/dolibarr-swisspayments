@@ -4,6 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS llx_swisspayments_soc (
 rowid INT NOT NULL AUTO_INCREMENT ,
+entity INTEGER DEFAULT 1 NOT NULL,
 fk_societe INT NOT NULL,
 startorderno INT,
 endorderno INT,

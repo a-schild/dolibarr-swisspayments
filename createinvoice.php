@@ -66,6 +66,10 @@ if ($user->societe_id > 0) {
   accessforbidden();
 }
 
+// Apply any pending DB schema migration after a plain file/zip update (no module
+// disable/re-enable needed). No-op once the schema-version constant is up to date.
+swisspayments_check_db_version($db, $conf);
+
 // Default action
 if (empty($action) && empty($id) && empty($ref)) {
   $action = 'showcodefield';
@@ -142,7 +146,7 @@ if ($result > 0) {
           $i = 0;
           if ($num > 0) {
             $warn++;
-            $mesg = "Rechnung Nr. " . $myobject->billnr . " existiert f&uumlr diesen Lieferanten schon, bitte Rechnungsnummer &auml;ndern";
+            $mesg = $langs->trans('SwpInvoiceExistsChange', $myobject->billnr);
           }
         }
       }
@@ -279,13 +283,13 @@ if ($result > 0) {
                   $i = 0;
                   if ($num > 0) {
                     $warn++;
-                    $mesg = "Rechnung Nr. " . $myobject->billnr . " existiert f&uumlr diesen Lieferanten schon, bitte Rechnungsnummer &auml;ndern";
+                    $mesg = $langs->trans('SwpInvoiceExistsChange', $myobject->billnr);
                   }
                 }
             }
             else if ($db->num_rows($resql) > 1)
             {
-              setEventMessage("Mehrere Konten mit gleicher IBAN gefunden (".$db->num_rows($resql)."). Bitte Lieferant manuell zuweisen.", 'warnings');
+              setEventMessage($langs->trans('SwpMultipleAccountsSameIban', $db->num_rows($resql)), 'warnings');
             }
             else
             {
@@ -295,7 +299,7 @@ if ($result > 0) {
         }
         else
         {
-            setEventMessage("Datenbankfehler: ".$db->lasterror(), 'errors');
+            setEventMessage($langs->trans('SwpDbError', $db->lasterror()), 'errors');
         }
       
     }
@@ -340,7 +344,7 @@ if ($result > 0) {
                   $i = 0;
                   if ($num > 0) {
                     $error++;
-                    $mesg = "Rechnung Nr. " . $myobject->billnr . " existiert f&uumlr diesen Lieferanten schon, bitte Rechnungsnummer &auml;ndern";
+                    $mesg = $langs->trans('SwpInvoiceExistsChange', $myobject->billnr);
                   }
                 }
 
@@ -360,7 +364,7 @@ if ($result > 0) {
             }
             else if ($db->num_rows($resql) > 1)
             {
-              setEventMessage("Mehrere Konten mit gleicher IBAN gefunden (".$db->num_rows($resql)."). Bitte Lieferant manuell zuweisen.", 'warnings');
+              setEventMessage($langs->trans('SwpMultipleAccountsSameIban', $db->num_rows($resql)), 'warnings');
             }
             else
             {
@@ -370,7 +374,7 @@ if ($result > 0) {
         }
         else
         {
-            setEventMessage("Datenbankfehler: ".$db->lasterror(), 'errors');
+            setEventMessage($langs->trans('SwpDbError', $db->lasterror()), 'errors');
         }
     }
   }
@@ -394,7 +398,7 @@ if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
     $error++;
   } else if ($newZip == '' || $newTown == '') {
     // Post code + town are mandatory for the structured pain.001 address.
-    setEventMessage("PLZ und Ort sind erforderlich (strukturierte Adresse)", 'errors');
+    setEventMessage($langs->trans('SwpZipTownRequired'), 'errors');
     $error++;
   } else {
     $db->begin();
@@ -438,7 +442,7 @@ if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
         $societe = $newSoc;
         // Continue in the "known supplier" flow so the invoice fields are shown.
         $action = 'analyzecode';
-        setEventMessage("Lieferant '" . $newSoc->name . "' wurde angelegt", 'mesgs');
+        setEventMessage($langs->trans('SwpSupplierCreated', $newSoc->name), 'mesgs');
       }
     }
   }
@@ -451,7 +455,7 @@ if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
 if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid") && !$myobject->hasAmount) {
   $amount = price2num(GETPOST('amount', 'alpha'));
   if (!is_numeric($amount) || $amount <= 0) {
-    setEventMessage("Bitte einen g&uuml;ltigen Betrag (gr&ouml;sser als 0) erfassen", 'errors');
+    setEventMessage($langs->trans('SwpAmountRequired'), 'errors');
     $error++;
   } else {
     $myobject->amount = $amount;
@@ -461,7 +465,7 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
 // The invoice number ("Rechnung Nr.") is required (it is the supplier's invoice number
 // and the duplicate-check key). For QR bills it now defaults to empty, so enforce it here.
 if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid") && trim((string) $myobject->billnr) === "") {
-  setEventMessage("Bitte eine Rechnungsnummer erfassen", 'errors');
+  setEventMessage($langs->trans('SwpInvoiceNumberRequired'), 'errors');
   $error++;
 }
 
@@ -472,7 +476,7 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
     $i = 0;
     if ($num > 0) {
       $error++;
-      $mesg = "Rechnung Nr. " . $myobject->billnr . " existiert f&uuml;r diesen Lieferanten schon";
+      $mesg = $langs->trans('SwpInvoiceExists', $myobject->billnr);
     } else {
       $db->begin(); // Begin transaction
       // Create Facture
@@ -516,6 +520,10 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
         }
         $factESR->esrpartynr = $myobject->pcAccount;
         $factESR->esrrefnr = $myobject->fullRefline;
+        // Store the creditor IBAN of THIS bill so the payment file targets the correct
+        // account even when the supplier has several bank accounts (independent of which
+        // societe_rib happens to be the default). Empty for legacy ESR (non-QR) bills.
+        $factESR->iban = $myobject->iban;
         $result = $factESR->create($user, 0);
         if ($result < 0) {
           $mesg = $newESRSoc->error;
@@ -532,7 +540,7 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
     }
   } else {
     $error++;
-    $mesg = "Error duplicate check";
+    $mesg = $langs->trans('SwpDuplicateCheckError');
   }
 }
 
@@ -550,7 +558,7 @@ if ($error == 0 && $facture && $facture->id > 0 && $facture->statut == 0) {
 
 llxHeader('', $langs->trans('ReadESR'), '');
 
-echo "<h1>Lieferantenrechnung erfassen</h1>";
+echo "<h1>" . $langs->trans('SwpEnterSupplierInvoice') . "</h1>";
 
 $form = new Form($db);
 
@@ -561,10 +569,12 @@ $inReview = !($facture && $facture->id > 0) && $parsedOk && ($action == 'createe
 
 // Wizard step indicator
 $step = $inReview ? 2 : 1;
+$stepLabel1 = $langs->trans('SwpStepReadQr');
+$stepLabel2 = $langs->trans('SwpStepSupplierInvoice');
 echo '<div style="margin:0 0 14px 0;font-size:1.05em;">';
-echo ($step == 1 ? '<strong>&#10148; 1. QR-Code einlesen</strong>' : '<span style="opacity:.6">1. QR-Code einlesen</span>');
+echo ($step == 1 ? '<strong>&#10148; 1. ' . $stepLabel1 . '</strong>' : '<span style="opacity:.6">1. ' . $stepLabel1 . '</span>');
 echo ' &nbsp;&rarr;&nbsp; ';
-echo ($step == 2 ? '<strong>&#10148; 2. Lieferant &amp; Rechnung</strong>' : '<span style="opacity:.6">2. Lieferant &amp; Rechnung</span>');
+echo ($step == 2 ? '<strong>&#10148; 2. ' . $stepLabel2 . '</strong>' : '<span style="opacity:.6">2. ' . $stepLabel2 . '</span>');
 echo '</div>';
 
 // Central message display (setEventMessage entries are shown by the framework itself).
@@ -575,17 +585,17 @@ if ($error > 0 && !empty($mesg)) {
 }
 
 // Renders the shared invoice detail fields (QR ref, bill nr, dates, release) inside a table.
-$renderInvoiceFields = function () use ($form, $societe, $myobject, $db) {
+$renderInvoiceFields = function () use ($form, $societe, $myobject, $db, $langs) {
   if ($myobject->isQRCode) {
     // Editable QR reference (stored as esrline; the QRR sent to the bank). Pre-filled
     // from the scan so a bad scan can be corrected here. Validated live in JS below.
     // A QRR is only mandatory with a QR-IBAN (CH/LI, '3' at position 5); a QR-bill on a
     // normal IBAN legitimately has no QRR (reference type SCOR or NON), so don't require it.
     $isQrIban = preg_match('/^(CH|LI)[0-9]{2}3/', strtoupper(str_replace(' ', '', (string) $myobject->iban)));
-    print '<tr><td width="30%" class="' . ($isQrIban ? 'fieldrequired' : '') . '">QR-Referenz</td><td>';
+    print '<tr><td width="30%" class="' . ($isQrIban ? 'fieldrequired' : '') . '">' . $langs->trans('SwpQrReference') . '</td><td>';
     print '<input type="text" name="qrref" id="qrref" size="35" value="' . dol_escape_htmltag($myobject->refLine) . '" onkeyup="swpCheckQrref()" onchange="swpCheckQrref()"> ';
     print '<span id="qrref_msg"></span>';
-    if (!$isQrIban) print '<br><span class="opacitymedium">Keine QR-IBAN &ndash; QR-Referenz optional (SCOR/ohne Referenz)</span>';
+    if (!$isQrIban) print '<br><span class="opacitymedium">' . $langs->trans('SwpNoQrIbanRefOptional') . '</span>';
     print '</td></tr>';
   }
   // For QR bills the invoice number is the supplier's own number, not the QR reference.
@@ -613,9 +623,9 @@ $renderInvoiceFields = function () use ($form, $societe, $myobject, $db) {
       }
     }
   }
-  print '<tr><td width="30%" class="fieldrequired">Rechnung Nr.</td><td>';
+  print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('SwpInvoiceNumber') . '</td><td>';
   print '<input type="text" name="billnr" id="billnr" value="' . dol_escape_htmltag($billnrDefault) . '"></td></tr>';
-  print '<tr><td class="fieldrequired">Rechnungsdatum</td><td>';
+  print '<tr><td class="fieldrequired">' . $langs->trans('SwpInvoiceDate') . '</td><td>';
   $form->select_date('', 'facturedate', 0, 0, 0, "myform");
   print '</td></tr>';
   $nDays = 30;
@@ -627,10 +637,10 @@ $renderInvoiceFields = function () use ($form, $societe, $myobject, $db) {
   }
   $dueDate = new DateTime();
   $dueDate->add(new DateInterval('P' . $nDays . 'D'));
-  print '<tr><td class="fieldrequired">Zahlbar bis</td><td>';
+  print '<tr><td class="fieldrequired">' . $langs->trans('SwpDueDate') . '</td><td>';
   $form->select_date($dueDate->format('Y-m-d'), 'duedate', 0, 0, 0, "myform");
   print '</td></tr>';
-  print '<tr><td class="fieldrequired">Rechnung freigeben</td><td><input type="checkbox" name="validate" value="1"></td></tr>';
+  print '<tr><td class="fieldrequired">' . $langs->trans('SwpValidateInvoice') . '</td><td><input type="checkbox" name="validate" value="1"></td></tr>';
 };
 
 if ($inReview) {
@@ -638,14 +648,14 @@ if ($inReview) {
 
   // Scanned payment info
   print '<table class="border" width="100%">';
-  print '<tr class="liste_titre"><td colspan="2">' . ($myobject->isQRCode ? 'QR-Rechnung' : 'Zahlung') . '</td></tr>';
+  print '<tr class="liste_titre"><td colspan="2">' . ($myobject->isQRCode ? $langs->trans('SwpQrBill') : $langs->trans('SwpPayment')) . '</td></tr>';
   if ($myobject->iban) {
     print '<tr><td width="30%">IBAN</td><td>' . dol_escape_htmltag($myobject->iban) . '</td></tr>';
   } else {
-    print '<tr><td width="30%">PC Konto</td><td>' . dol_escape_htmltag($myobject->pcAccount) . '</td></tr>';
-    print '<tr><td>ESR ID</td><td>' . dol_escape_htmltag($myobject->esrID) . '</td></tr>';
+    print '<tr><td width="30%">' . $langs->trans('SwpPostalAccount') . '</td><td>' . dol_escape_htmltag($myobject->pcAccount) . '</td></tr>';
+    print '<tr><td>' . $langs->trans('SwpEsrId') . '</td><td>' . dol_escape_htmltag($myobject->esrID) . '</td></tr>';
   }
-  if ($myobject->payToName) print '<tr><td>Empf&auml;nger</td><td>' . dol_escape_htmltag($myobject->payToName) . '</td></tr>';
+  if ($myobject->payToName) print '<tr><td>' . $langs->trans('SwpRecipient') . '</td><td>' . dol_escape_htmltag($myobject->payToName) . '</td></tr>';
   // Build the address from the clean structured parts (avoids the raw newlines that
   // sit in the combined payToAddress string); fall back to the combined string.
   $addrParts = array();
@@ -657,13 +667,13 @@ if ($inReview) {
   if (empty($addrParts) && $myobject->payToAddress) {
     $addrParts[] = trim(str_replace(array("\r\n", "\r", "\n"), ', ', $myobject->payToAddress));
   }
-  if (!empty($addrParts)) print '<tr><td>Adresse</td><td>' . dol_escape_htmltag(implode(', ', $addrParts)) . '</td></tr>';
-  if ($myobject->hasAmount) print '<tr><td>Betrag</td><td>' . price($myobject->amount) . ' CHF</td></tr>';
+  if (!empty($addrParts)) print '<tr><td>' . $langs->trans('SwpAddress') . '</td><td>' . dol_escape_htmltag(implode(', ', $addrParts)) . '</td></tr>';
+  if ($myobject->hasAmount) print '<tr><td>' . $langs->trans('Amount') . '</td><td>' . price($myobject->amount) . ' CHF</td></tr>';
   print '</table><br>';
 
   if ($societe->id != 0) {
     // ----- Known supplier: create invoice -----
-    print '<div class="info">Bekannter Lieferant: ' . $societe->getNomUrl(1) . '</div><br>';
+    print '<div class="info">' . $langs->trans('SwpKnownSupplier') . ': ' . $societe->getNomUrl(1) . '</div><br>';
     print '<form method="post" name="myform">';
     print '<input type="hidden" name="token" value="' . newToken() . '">';
     echo "<input type='hidden' name='codeline' value='" . $myobject->codeline . "'>";
@@ -679,16 +689,16 @@ if ($inReview) {
       $rqDef = $db->query("SELECT iban_prefix FROM " . MAIN_DB_PREFIX . "societe_rib WHERE fk_soc=" . ((int) $societe->id) . " AND default_rib=1");
       if ($rqDef && $db->num_rows($rqDef) > 0) { $oDef = $db->fetch_object($rqDef); $defaultRibIban = strtoupper(str_replace(' ', '', (string) $oDef->iban_prefix)); }
       if ($defaultRibIban !== '' && $defaultRibIban !== $scannedIban) {
-        print '<tr><td width="30%">Standard-Konto</td><td>';
-        print img_warning() . ' Die IBAN dieser Rechnung (' . dol_escape_htmltag($myobject->iban) . ') ist nicht das Standard-Bankkonto des Lieferanten (' . dol_escape_htmltag($defaultRibIban) . '). Die Zahlung erfolgt sonst an das Standard-Konto.<br>';
-        print '<label><input type="checkbox" name="set_default_iban" value="1" checked> Gescannte IBAN als Standard-Bankkonto setzen</label>';
+        print '<tr><td width="30%">' . $langs->trans('SwpDefaultAccount') . '</td><td>';
+        print img_warning() . ' ' . $langs->trans('SwpIbanNotDefaultWarn', $myobject->iban, $defaultRibIban) . '<br>';
+        print '<label><input type="checkbox" name="set_default_iban" value="1" checked> ' . $langs->trans('SwpSetScannedIbanDefault') . '</label>';
         print '</td></tr>';
       }
     }
-    if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">Betrag</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
+    if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('Amount') . '</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
-    print '<div class="center"><input type="submit" class="button" value="Rechnung erstellen"></div>';
+    print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpCreateInvoice')) . '"></div>';
     print '<input type="hidden" name="action" value="' . ($action == 'createesrid' ? 'createfacture' : 'createesrid') . '">';
     print '</form>';
   } else {
@@ -698,14 +708,14 @@ if ($inReview) {
     echo "<input type='hidden' name='codeline' value='" . $myobject->codeline . "'>";
     if ($myobject->hasAmount) print '<input type="hidden" name="amount" value="' . dol_escape_htmltag($myobject->amount) . '">';
     print '<table class="border" width="100%">';
-    print '<tr class="liste_titre"><td colspan="2">Bestehendem Lieferant zuweisen</td></tr>';
+    print '<tr class="liste_titre"><td colspan="2">' . $langs->trans('SwpAssignExistingSupplier') . '</td></tr>';
     print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('Supplier') . '</td><td>';
     print $form->select_company(GETPOST('socid', 'int'), 'socid', 's.fournisseur = 1', 1);
     print '</td></tr>';
-    if (!$myobject->hasAmount) print '<tr><td class="fieldrequired">Betrag</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
+    if (!$myobject->hasAmount) print '<tr><td class="fieldrequired">' . $langs->trans('Amount') . '</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
-    print '<div class="center"><input type="submit" class="button" value="Zuweisen &amp; Rechnung erstellen"></div>';
+    print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpAssignAndCreateInvoice')) . '"></div>';
     print '<input type="hidden" name="action" value="' . ($action == 'createesrid' ? 'createfacture' : 'createesrid') . '">';
     print '</form>';
 
@@ -716,16 +726,16 @@ if ($inReview) {
       print '<input type="hidden" name="token" value="' . newToken() . '">';
       echo "<input type='hidden' name='codeline' value='" . $myobject->codeline . "'>";
       print '<table class="border" width="100%">';
-      print '<tr class="liste_titre"><td colspan="2">Neuen Lieferant aus QR-Daten anlegen</td></tr>';
-      print '<tr><td width="30%" class="fieldrequired">Name</td><td><input type="text" name="new_name" size="50" value="' . dol_escape_htmltag($myobject->payToName) . '"></td></tr>';
-      print '<tr><td>Strasse / Nr.</td><td><input type="text" name="new_street" size="50" value="' . dol_escape_htmltag($prefStreet) . '"></td></tr>';
-      print '<tr><td class="fieldrequired">PLZ / Ort</td><td>';
+      print '<tr class="liste_titre"><td colspan="2">' . $langs->trans('SwpCreateSupplierFromQr') . '</td></tr>';
+      print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('SwpName') . '</td><td><input type="text" name="new_name" size="50" value="' . dol_escape_htmltag($myobject->payToName) . '"></td></tr>';
+      print '<tr><td>' . $langs->trans('SwpStreetNo') . '</td><td><input type="text" name="new_street" size="50" value="' . dol_escape_htmltag($prefStreet) . '"></td></tr>';
+      print '<tr><td class="fieldrequired">' . $langs->trans('SwpZipTown') . '</td><td>';
       print '<input type="text" name="new_zip" size="8" value="' . dol_escape_htmltag($myobject->payToPostcode) . '"> ';
       print '<input type="text" name="new_town" size="30" value="' . dol_escape_htmltag($myobject->payToTown) . '"></td></tr>';
-      print '<tr><td class="fieldrequired">Land</td><td><input type="text" name="new_country" size="4" value="' . dol_escape_htmltag($myobject->payToCountry ? $myobject->payToCountry : 'CH') . '"></td></tr>';
+      print '<tr><td class="fieldrequired">' . $langs->trans('SwpCountry') . '</td><td><input type="text" name="new_country" size="4" value="' . dol_escape_htmltag($myobject->payToCountry ? $myobject->payToCountry : 'CH') . '"></td></tr>';
       print '<tr><td>IBAN</td><td>' . dol_escape_htmltag($myobject->iban) . '</td></tr>';
       print '</table><br>';
-      print '<div class="center"><input type="submit" class="button" value="Lieferant anlegen"></div>';
+      print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpCreateSupplier')) . '"></div>';
       print '<input type="hidden" name="action" value="createsupplier">';
       print '</form>';
     }
@@ -752,7 +762,7 @@ if ($inReview) {
 } else {
   // ===== STEP 1: read a QR code =====
   if ($facture && $facture->id > 0) {
-    echo '<div class="ok">Rechnung ' . $facture->getNomUrl() . ' wurde erfasst</div><br>';
+    echo '<div class="ok">' . $langs->trans('SwpInvoiceRecorded', $facture->getNomUrl()) . '</div><br>';
   }
 
   print '<form method="post">';
@@ -760,7 +770,7 @@ if ($inReview) {
   print '<table class="border" width="100%">';
   print '<tr><td width="30%">QR-Code</td><td><textarea name="qrcode" id="qrcode" rows="6" cols="60"></textarea></td></tr>';
   print '</table><br>';
-  print '<div class="center"><input type="submit" class="button" value="Einlesen"></div>';
+  print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpRead')) . '"></div>';
   print '<input type="hidden" name="action" value="analyzecode">';
   print '</form><br>';
 
@@ -772,7 +782,7 @@ if ($inReview) {
   echo '<div style="margin-top:10px">';
   echo "<a href='" . $mobileUrl . "' target='_blank'>";
   echo "<img src='mobileqr.php?t=" . $scanToken . "'><br/>";
-  echo "Mit dem Smartphone scannen (kein Login n&ouml;tig)";
+  echo dol_escape_htmltag($langs->trans('SwpScanWithPhone'));
   echo "</a>";
   echo '<div id="swp_scan_status" style="margin-top:6px"></div>';
   echo '</div>';
@@ -787,7 +797,7 @@ if ($inReview) {
             clearInterval(timer);
             var q = document.getElementById("qrcode");
             var st = document.getElementById("swp_scan_status");
-            if (st) st.innerHTML = "✓ Vom Smartphone empfangen, wird eingelesen ...";
+            if (st) st.innerHTML = ' . json_encode("✓ " . $langs->trans('SwpReceivedFromPhone')) . ';
             if (q) { q.value = d.payload; if (q.form) { q.form.submit(); } }
           }
         }).catch(function(){});

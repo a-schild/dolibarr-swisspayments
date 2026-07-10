@@ -218,4 +218,77 @@ function swisspayments_scan_read($token) {
 	}
 	return $data;
 }
+
+/**
+ * Columns added to the module tables after the initial release. Single source of truth
+ * shared by the module descriptor's init() and the runtime auto-migration guard.
+ * Format: table (without MAIN_DB_PREFIX) => list of "columnname coldefinition".
+ *
+ * @return array
+ */
+function swisspayments_db_columns() {
+	return array(
+		'swisspayments_soc'   => array("entity INTEGER DEFAULT 1 NOT NULL"),
+		'swisspayments_factf' => array("entity INTEGER DEFAULT 1 NOT NULL", "iban VARCHAR(34)"),
+		'swisspayments_payl'  => array("entity INTEGER DEFAULT 1 NOT NULL"),
+		'swisspayments_payh'  => array("entity INTEGER DEFAULT 1 NOT NULL", "fk_user_author INT"),
+	);
+}
+
+/**
+ * Add any missing module columns to already-existing tables. Each ALTER is guarded by a
+ * DB-portable column probe ("SELECT <col> ... WHERE 1=0", which fails only when the column
+ * is missing), so the function is idempotent and safe to run repeatedly on both
+ * MySQL/MariaDB and PostgreSQL.
+ *
+ * @param DoliDB $db
+ * @return int  1
+ */
+function swisspayments_migrate_tables($db) {
+	foreach (swisspayments_db_columns() as $table => $defs) {
+		foreach ($defs as $def) {
+			$col = trim(substr($def, 0, strpos($def, ' ')));
+			// A missing column makes the probe SELECT fail; then add it.
+			$probe = $db->query("SELECT ".$col." FROM ".MAIN_DB_PREFIX.$table." WHERE 1 = 0");
+			if (!$probe) {
+				$db->query("ALTER TABLE ".MAIN_DB_PREFIX.$table." ADD COLUMN ".$def);
+			}
+		}
+	}
+	return 1;
+}
+
+/**
+ * Runtime auto-migration guard. Compares the stored schema-version constant
+ * (`SWISSPAYMENTS_DB_VERSION`) with the module VERSION and, when it is missing or older,
+ * runs swisspayments_migrate_tables() once and bumps the constant. This lets a plain
+ * file/zip update apply its schema changes on the first module page load, without the
+ * disable/re-enable dance. When versions match it returns immediately (no DB writes),
+ * so it is cheap to call on every module page.
+ *
+ * @param DoliDB $db
+ * @param Conf   $conf
+ * @return int  1 if OK / up to date, 0 if the module version could not be resolved
+ */
+function swisspayments_check_db_version($db, $conf) {
+	dol_include_once('/swisspayments/core/modules/modSwisspayments.class.php');
+	$current = class_exists('modswisspayments') ? modswisspayments::VERSION : '';
+	if ($current === '') {
+		return 0;
+	}
+	// Read the stored version directly from $conf->global (already loaded, no query) so we
+	// don't depend on getDolGlobalString() being present on older Dolibarr releases.
+	$stored = isset($conf->global->SWISSPAYMENTS_DB_VERSION) ? (string) $conf->global->SWISSPAYMENTS_DB_VERSION : '';
+	if ($stored !== '' && version_compare($stored, $current, '>=')) {
+		return 1; // schema already at or above the current version
+	}
+	swisspayments_migrate_tables($db);
+	dolibarr_set_const($db, 'SWISSPAYMENTS_DB_VERSION', $current, 'chaine', 0, '', $conf->entity);
+	// Reflect it in memory so the guard is a no-op for the rest of this request.
+	if (!isset($conf->global)) {
+		$conf->global = new stdClass();
+	}
+	$conf->global->SWISSPAYMENTS_DB_VERSION = $current;
+	return 1;
+}
 	

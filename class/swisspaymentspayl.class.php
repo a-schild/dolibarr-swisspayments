@@ -27,7 +27,8 @@ class Swisspaymentspayl extends CommonObject
 	var $table_element='swisspayments_payl';		//!< Name of table without prefix where object is stored
 
         var $id;
-    
+
+	var $entity;
 	var $fk_payementfourn;     // FK Payed facture
 	var $fk_payh;       // FK Payment header
         var $datec;         // Date created
@@ -71,14 +72,16 @@ class Swisspaymentspayl extends CommonObject
 
         // Insert request
 		$sql = "INSERT INTO ".MAIN_DB_PREFIX.$this->table_element."(";
-		
+
+		$sql.= "entity,";
 		$sql.= "fk_payementfourn,";
                 $sql.= "fk_payh,";
 		$sql.= "datec";
 
-		
+
         $sql.= ") VALUES (";
-        
+
+		$sql.= " ".((int) $conf->entity).",";
 		$sql.= " ".(! isset($this->fk_payementfourn)?'NULL':((int) $this->fk_payementfourn)).",";
 		$sql.= " ".(! isset($this->fk_payh)?'NULL':((int) $this->fk_payh)).",";
                 $sql.= " '" . $this->db->idate($now) . "'";
@@ -137,15 +140,17 @@ class Swisspaymentspayl extends CommonObject
     	global $langs;
         $sql = "SELECT";
 		$sql.= " t.rowid,";
-		
+		$sql.= " t.entity,";
 		$sql.= " t.fk_payementfourn,";
 		$sql.= " t.fk_payh,";
-		$sql.= " t.datec,";
+		$sql.= " t.datec";
 
-		
+
         $sql.= " FROM ".MAIN_DB_PREFIX.$this->table_element." as t";
-        if ($payh) $sql.= " WHERE t.fk_payh= ".$this->db->escape($payh);
-        else $sql.= " WHERE t.rowid = ".$id;
+        if ($payh) $sql.= " WHERE t.fk_payh= ".((int) $payh);
+        else $sql.= " WHERE t.rowid = ".((int) $id);
+        // Restrict to the current entity (multi-company isolation).
+        $sql.= " AND t.entity IN (".getEntity($this->element).")";
 
     	dol_syslog(get_class($this)."::fetch");
         $resql=$this->db->query($sql);
@@ -156,7 +161,7 @@ class Swisspaymentspayl extends CommonObject
                 $obj = $this->db->fetch_object($resql);
 
                 $this->id    = $obj->rowid;
-                
+                $this->entity = $obj->entity;
                 $this->fk_payh= $obj->fk_payh;
                 $this->fk_payementfourn = $obj->fk_payementfourn;
                 $this->datec     = $this->db->jdate($obj->datec);
