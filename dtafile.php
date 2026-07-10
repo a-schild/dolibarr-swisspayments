@@ -84,6 +84,10 @@ if (!$user->rights->swisspayments->paydta->dopay) {
 	accessforbidden();
 }
 
+// Apply any pending DB schema migration after a plain file/zip update (no module
+// disable/re-enable needed). No-op once the schema-version constant is up to date.
+swisspayments_check_db_version($db, $conf);
+
 $socid=GETPOST('socid','int');
 $option = GETPOST('option');
 

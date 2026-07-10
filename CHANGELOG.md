@@ -38,6 +38,14 @@ uses date‑based versions (`YYYY.M`).
   supplier from a scanned QR.
 - **Download button** for the generated bank payment file on `dtafile.php` — a prominent
   action button with a download icon (and the file name), replacing the plain text link.
+- **Automatic schema migration on update.** A `SWISSPAYMENTS_DB_VERSION` constant tracks
+  the installed schema version; a guard on each module page
+  (`swisspayments_check_db_version()`) runs the idempotent migration and bumps the
+  constant when it is missing or older than the module `VERSION`. This means a plain
+  file/zip update applies its schema changes on the first module page load, without
+  having to disable/re-enable the module. The migration itself (`swisspayments_migrate_tables()`)
+  is shared with the descriptor's `init()`, so activation and the runtime guard apply
+  exactly the same changes.
 
 ### Removed
 - Deprecated legacy `swisspayments.php` entry page (raw `$_GET`/`$_POST`, predated the

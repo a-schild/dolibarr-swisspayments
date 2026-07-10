@@ -506,6 +506,8 @@ class modswisspayments extends DolibarrModules
 	 */
 	public function init($options = '')
 	{
+		global $conf;
+
 		$sql = array();
 
                 $dtaPath= DOL_DATA_ROOT . "/swisspayments/dtafiles/";
@@ -513,47 +515,22 @@ class modswisspayments extends DolibarrModules
                 {
                     mkdir($dtaPath,0777,true);
                 }
-                
+
 		$result = $this->loadTables();
 
 		// Bring the tables of an already-installed module up to date (CREATE TABLE IF NOT
-		// EXISTS above never alters an existing table). Adds the entity column to every
-		// table and the batch-owner column to swisspayments_payh. Idempotent.
-		$this->migrateTables();
+		// EXISTS above never alters an existing table). The shared, idempotent migration
+		// is also used by the runtime auto-migration guard (swisspayments_check_db_version),
+		// so both paths apply the exact same schema changes.
+		dol_include_once('/swisspayments/lib/swisspayments.lib.php');
+		if (function_exists('swisspayments_migrate_tables')) {
+			swisspayments_migrate_tables($this->db);
+		}
+		// Record the schema version so the runtime guard is a no-op after a proper
+		// (re)activation.
+		dolibarr_set_const($this->db, 'SWISSPAYMENTS_DB_VERSION', self::VERSION, 'chaine', 0, '', $conf->entity);
 
 		return $this->_init($sql, $options);
-	}
-
-	/**
-	 * Add columns introduced after the initial release to already-existing tables.
-	 * Each ALTER is guarded by a DB-portable column probe ("SELECT <col> ... WHERE 1=0",
-	 * which fails only when the column is missing) so the method is safe to run on every
-	 * module (re)activation, on both MySQL/MariaDB and PostgreSQL.
-	 *
-	 * 	@return		int		<=0 if KO, >0 if OK
-	 */
-	private function migrateTables()
-	{
-		// table => list of "columnname columndefinition" to add when missing.
-		$columns = array(
-			'swisspayments_soc'   => array("entity INTEGER DEFAULT 1 NOT NULL"),
-			'swisspayments_factf' => array("entity INTEGER DEFAULT 1 NOT NULL", "iban VARCHAR(34)"),
-			'swisspayments_payl'  => array("entity INTEGER DEFAULT 1 NOT NULL"),
-			'swisspayments_payh'  => array("entity INTEGER DEFAULT 1 NOT NULL", "fk_user_author INT"),
-		);
-
-		foreach ($columns as $table => $defs) {
-			foreach ($defs as $def) {
-				$col = trim(substr($def, 0, strpos($def, ' ')));
-				// Probe for the column; a missing column makes the SELECT fail.
-				$probe = $this->db->query("SELECT ".$col." FROM ".MAIN_DB_PREFIX.$table." WHERE 1 = 0");
-				if (!$probe) {
-					$this->db->query("ALTER TABLE ".MAIN_DB_PREFIX.$table." ADD COLUMN ".$def);
-				}
-			}
-		}
-
-		return 1;
 	}
 
 	/**

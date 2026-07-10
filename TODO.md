@@ -8,10 +8,12 @@ release 2026.07.5 — see the [CHANGELOG](CHANGELOG.md). Nothing is currently op
 
 ## Notes for future work
 
-- The migration that adds the `entity` / `fk_user_author` columns to existing installs
-  runs from `modswisspayments::init()` (guarded, idempotent `ALTER TABLE`s). It only
-  runs when the module is (re)activated or on a Dolibarr upgrade — a plain file update
-  without re-activation will not add the columns.
+- The migration that adds the `entity` / `fk_user_author` / `factf.iban` columns is
+  defined in `swisspayments_db_columns()` / `swisspayments_migrate_tables()`
+  (`lib/swisspayments.lib.php`). It runs from `modswisspayments::init()` on activation
+  **and** from `swisspayments_check_db_version()` on the first module page load after a
+  plain file/zip update (guarded by the `SWISSPAYMENTS_DB_VERSION` constant), so a
+  re-enable is no longer required. Both paths are idempotent.
 - Existing pre-migration rows get `entity = 1` (the column default) and a NULL
   `fk_user_author`; legacy payment batches with a NULL owner are therefore accessible
   to administrators only.
