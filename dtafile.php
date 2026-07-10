@@ -179,7 +179,7 @@ else
     echo '</a>';
     echo '</div>';
 
-    echo "<div class='center'><a href='".DOL_URL_ROOT."/fourn/facture/paiement.php'>".$langs->trans('SwpBackToPaymentList')."</a></div>";
+    echo "<div class='center'><a href='".DOL_URL_ROOT."/fourn/paiement/list.php?leftmenu=suppliers_bills_payment'>".$langs->trans('SwpBackToPaymentList')."</a></div>";
 }
 
 // End of page
