@@ -42,32 +42,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 header('Content-Type: text/html; charset=UTF-8');
+
+// Brand logo: use the Dolibarr company logo when configured (served publicly through
+// viewimage.php), otherwise fall back to a "Swisspayments" wordmark.
+$logoHtml = '<span class="brandmark">Swiss<span class="accent">payments</span></span>';
+if (!empty($conf->global->MAIN_INFO_SOCIETE_LOGO)) {
+	$logoUrl = DOL_URL_ROOT . '/viewimage.php?modulepart=mycompany&entity=' . ((int) $conf->entity) . '&file=' . urlencode('logos/' . $conf->global->MAIN_INFO_SOCIETE_LOGO);
+	$logoHtml = '<img src="' . dol_escape_htmltag($logoUrl) . '" alt="Logo">';
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#ffffff">
   <title>Swisspayments Scan</title>
   <script type="text/javascript" src="js/html5-qrcode.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 12px; color: #333; }
-    h1 { font-size: 1.2em; }
-    #reader { width: 100%; max-width: 480px; margin: 0 auto; }
-    #status { font-size: 1.1em; text-align: center; padding: 16px; }
-    .ok { color: #178017; }
-    .err { color: #cc0000; }
-    input[type=file] { margin-top: 14px; }
+    :root {
+      --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --muted: #64748b;
+      --accent: #e30613; --ok: #16a34a; --err: #dc2626; --line: #e2e8f0; --radius: 18px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --card: #131a2a; --text: #e5e9f0; --muted: #94a3b8; --line: #263148; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: center; padding: 14px;
+      background: #ffffff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10;
+    }
+    .topbar img { max-height: 42px; max-width: 70%; object-fit: contain; }
+    .brandmark { font-size: 1.35em; font-weight: 800; letter-spacing: -.02em; color: #0f172a; }
+    .brandmark .accent { color: var(--accent); }
+    .wrap { max-width: 460px; margin: 0 auto; padding: 20px 16px 32px; }
+    h1 { font-size: 1.1em; font-weight: 600; text-align: center; color: var(--muted); margin: 4px 0 18px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(2, 6, 23, .12); overflow: hidden;
+    }
+    #reader { width: 100%; background: #000; }
+    #reader video { display: block; width: 100% !important; height: auto !important; }
+    .card-body { padding: 18px; }
+    #status { text-align: center; font-size: 1.05em; min-height: 1.3em; margin: 0; color: var(--muted); }
+    #status.ok { color: var(--ok); font-weight: 700; }
+    #status.err { color: var(--err); font-weight: 600; }
+    .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .85em; margin: 16px 0 12px; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .filelabel {
+      display: block; text-align: center; padding: 13px; border: 1px dashed var(--line);
+      border-radius: 12px; color: var(--muted); font-size: .95em; cursor: pointer;
+    }
+    .filelabel input { display: none; }
+    .badge { text-align: center; color: var(--muted); font-size: .8em; margin-top: 22px; }
   </style>
 </head>
 <body>
+  <div class="topbar"><?php echo $logoHtml; ?></div>
 <?php if (!$valid) { ?>
-  <div id="status" class="err">Der Scan-Link ist ung&uuml;ltig oder abgelaufen.<br>Bitte am Computer einen neuen QR-Code anzeigen.</div>
+  <div class="wrap">
+    <div class="card"><div class="card-body">
+      <p id="status" class="err">Der Scan-Link ist ung&uuml;ltig oder abgelaufen.<br>Bitte am Computer einen neuen QR-Code anzeigen.</p>
+    </div></div>
+  </div>
 <?php } else { ?>
-  <h1>QR-Rechnung scannen</h1>
-  <div id="reader"></div>
-  <input type="file" id="qr-input-file" accept="image/*" capture>
-  <div id="status"></div>
+  <div class="wrap">
+    <h1>QR-Rechnung scannen</h1>
+    <div class="card">
+      <div id="reader"></div>
+      <div class="card-body">
+        <p id="status">Kamera wird gestartet &hellip;</p>
+        <div class="divider">oder</div>
+        <label class="filelabel">QR-Bild vom Ger&auml;t hochladen
+          <input type="file" id="qr-input-file" accept="image/*" capture>
+        </label>
+      </div>
+    </div>
+    <div class="badge">Swisspayments &middot; sichere QR-Erfassung</div>
+  </div>
   <div id="reader-file" style="display:none"></div>
   <script>
     var SCAN_URL = "mobilescan.php?t=<?php echo $token; ?>";
@@ -113,6 +170,9 @@ header('Content-Type: text/html; charset=UTF-8');
       send(decodedText);
     }
     html5Qrcode.start({ facingMode: "environment" }, config, onCameraScan, function () {})
+      .then(function () {
+        setStatus("QR-Rechnung vor die Kamera halten");
+      })
       .catch(function () {
         setStatus("Kamerazugriff nicht m&ouml;glich (verweigert oder keine Kamera).<br>Bitte den Datei-Upload unten verwenden.", "err");
       });
