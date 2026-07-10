@@ -13,6 +13,10 @@ uses date‑based versions (`YYYY.M`).
   login), scans the QR-bill, and the desktop picks up the result by polling and continues
   automatically — like a USB scanner. Pairing state is kept in `DOL_DATA_ROOT` files
   (10-minute TTL), so no database change is needed.
+- Updated `html5-qrcode` to 2.3.8 (from the 2021 build), which uses the browser's native
+  `BarcodeDetector` when available. The mobile scan page now starts the rear camera
+  directly and only prompts for permission when it isn't already granted, falling back to
+  file upload if the camera is unavailable.
 
 ## [2026.07.1] – 2026-07-09
 

@@ -99,15 +99,23 @@ header('Content-Type: text/html; charset=UTF-8');
         });
     }
 
-    var scanner = new Html5QrcodeScanner("reader", {
+    // Start the rear camera directly (uses the native BarcodeDetector when available).
+    // The browser only shows the permission prompt if access isn't granted yet; if it is
+    // denied or no camera is present, we fall back to the file upload below.
+    var html5Qrcode = new Html5Qrcode("reader", { verbose: false });
+    var config = {
       fps: 10,
-      qrbox: 250,
+      qrbox: function (vw, vh) { var m = Math.floor(Math.min(vw, vh) * 0.8); return { width: m, height: m }; },
       experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-    }, false);
-    scanner.render(function (decodedText) {
-      scanner.clear().catch(function () {});
+    };
+    function onCameraScan(decodedText) {
+      html5Qrcode.stop().catch(function () {});
       send(decodedText);
-    }, function () {});
+    }
+    html5Qrcode.start({ facingMode: "environment" }, config, onCameraScan, function () {})
+      .catch(function () {
+        setStatus("Kamerazugriff nicht m&ouml;glich (verweigert oder keine Kamera).<br>Bitte den Datei-Upload unten verwenden.", "err");
+      });
 
     document.getElementById("qr-input-file").addEventListener("change", function (e) {
       if (!e.target.files || !e.target.files.length) return;
