@@ -7,6 +7,42 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.07.6] – 2026-07-13
+
+### Changed
+- **Dolibarr 15 → 24 compatibility.** The module is now validated across the full
+  Dolibarr 15.x–24.x range. The module descriptor advertises the supported range
+  (`need_dolibarr_version = 15.0`, new `max_dolibarr_version = 24.0`) and a realistic
+  PHP floor (`phpmin = 7.0`). All PHP sources lint clean on PHP 8.3.
+- **Deprecated-API cleanup via runtime shims.** Calls to APIs that were changed or
+  deprecated between Dolibarr 15 and 24 now go through small compatibility helpers in
+  `lib/swisspayments.lib.php` that prefer the modern API when present and fall back to
+  the legacy accessor otherwise, so the same code runs cleanly on every supported
+  version:
+  - `swisspayments_user_has_right()` — `User::hasRight()` (Dolibarr 16+) or legacy
+    `$user->rights->…`.
+  - `swisspayments_user_socid()` — `$user->socid` or the deprecated `$user->societe_id`.
+  - `swisspayments_conf_string()` — `getDolGlobalString()` (Dolibarr 16+) or
+    `$conf->global->…`.
+  - `swisspayments_mod_enabled()` — `isModEnabled()` or `$conf->{module}->enabled`.
+  Migrated pages: `createinvoice.php`, `dtapayments.php`, `dtafile.php`,
+  `company_swisspayments.php`, `mobileqr.php`, `mobilescan.php`, `scanpoll.php`.
+
+### Fixed
+- **Permission check on the payment list.** `dtapayments.php` tested only the existence
+  of the `paydta` permission object rather than the `paydta->dopay` right; it now checks
+  the actual right (matching `dtafile.php`).
+- **"Invoice recorded" confirmation showed a raw `<a …>` tag.** On step 1 of
+  `createinvoice.php` the success message passed the invoice link (`getNomUrl()`) as a
+  `%s` parameter to `$langs->trans()`, which HTML-escapes substitution parameters, so the
+  anchor (and its tooltip) printed as literal text. Switched to
+  `$langs->transnoentities()` so the link renders as a clickable link.
+
+### Removed
+- **Dead `class/swisspaymentssoc_page.php`.** A modulebuilder template leftover that was
+  unreferenced, had a broken include path, and checked a non-existent `mymodule`
+  permission. Removed.
+
 ## [2026.07.5] – 2026-07-10
 
 ### Security

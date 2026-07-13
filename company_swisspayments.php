@@ -23,7 +23,7 @@ $langs->load("swisspayments@swisspayments");
 
 // Security check
 $socid = GETPOST('id', 'int');
-if ($user->societe_id) $socid=$user->societe_id;
+if (swisspayments_user_socid($user) > 0) $socid=swisspayments_user_socid($user);
 $result = restrictedArea($user, 'societe', $socid, '&societe');
 
 // Apply any pending DB schema migration after a plain file/zip update (no module
@@ -65,7 +65,7 @@ dol_htmloutput_mesg($msg, null, 'valid');
     print '<table class="border" width="100%">';
     print '<tr><td width="20%">'.$langs->trans('ThirdPartyName').'</td>';
     print '<td colspan="3">';
-    print $form->showrefnav($soc,'socid','',($user->societe_id?0:1),'rowid','nom');
+    print $form->showrefnav($soc,'socid','',(swisspayments_user_socid($user)?0:1),'rowid','nom');
     print '</td></tr>';
     if ($soc->client) {
         print '<tr><td>';

@@ -61,7 +61,7 @@ $id = GETPOST('id', 'int');
 $action = GETPOST('action', 'showcodefield');
 
 // Access control
-if ($user->societe_id > 0) {
+if (swisspayments_user_socid($user) > 0) {
   // External user
   accessforbidden();
 }
@@ -762,7 +762,9 @@ if ($inReview) {
 } else {
   // ===== STEP 1: read a QR code =====
   if ($facture && $facture->id > 0) {
-    echo '<div class="ok">' . $langs->trans('SwpInvoiceRecorded', $facture->getNomUrl()) . '</div><br>';
+    // Use transnoentities(): the %s parameter is an HTML <a> link (getNomUrl), and
+    // trans() would HTML-escape it, printing the raw tag as text.
+    echo '<div class="ok">' . $langs->transnoentities('SwpInvoiceRecorded', $facture->getNomUrl()) . '</div><br>';
   }
 
   print '<form method="post">';

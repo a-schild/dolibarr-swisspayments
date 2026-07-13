@@ -41,7 +41,7 @@ global $user;
 header('Content-Type: application/json');
 
 // Only the logged-in internal user who created the pairing may read its payload.
-if ($user->societe_id > 0 || empty($user->rights->swisspayments->invoices->create)) {
+if (swisspayments_user_socid($user) > 0 || !swisspayments_user_has_right($user, 'swisspayments', 'invoices', 'create')) {
 	echo json_encode(array('payload' => null, 'error' => 'forbidden'));
 	exit;
 }

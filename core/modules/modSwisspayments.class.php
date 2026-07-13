@@ -19,7 +19,7 @@ class modswisspayments extends DolibarrModules
 {
 
 	/** Current module version (single source of truth; bump on each release). */
-	const VERSION = '2026.07.5';
+	const VERSION = '2026.07.6';
 
 	/**
 	 * 	Constructor. Define names, constants, directories, boxes, permissions
@@ -126,9 +126,11 @@ class modswisspayments extends DolibarrModules
 		// List of modules id this module is in conflict with
 		$this->conflictwith = array();
 		// Minimum version of PHP required by module
-		$this->phpmin = array(5, 3);
-		// Minimum version of Dolibarr required by module
-		$this->need_dolibarr_version = array(4, 0);
+		$this->phpmin = array(7, 0);
+		// Minimum version of Dolibarr required by module (supported range: 15.x .. 24.x)
+		$this->need_dolibarr_version = array(15, 0);
+		// Highest Dolibarr version this module has been tested/validated against
+		$this->max_dolibarr_version = array(24, 0);
 		// Language files list (langfiles@mymodule)
 		$this->langfiles = array("swisspayments@swisspayments");
 		// Constants
