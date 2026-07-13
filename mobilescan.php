@@ -78,8 +78,9 @@ header('Content-Type: text/html; charset=UTF-8');
 // Brand logo: use the Dolibarr company logo when configured (served publicly through
 // viewimage.php), otherwise fall back to a "Swisspayments" wordmark.
 $logoHtml = '<span class="brandmark">Swiss<span class="accent">payments</span></span>';
-if (!empty($conf->global->MAIN_INFO_SOCIETE_LOGO)) {
-	$logoUrl = DOL_URL_ROOT . '/viewimage.php?modulepart=mycompany&entity=' . ((int) $conf->entity) . '&file=' . urlencode('logos/' . $conf->global->MAIN_INFO_SOCIETE_LOGO);
+$societeLogo = swisspayments_conf_string('MAIN_INFO_SOCIETE_LOGO');
+if ($societeLogo !== '') {
+	$logoUrl = DOL_URL_ROOT . '/viewimage.php?modulepart=mycompany&entity=' . ((int) $conf->entity) . '&file=' . urlencode('logos/' . $societeLogo);
 	$logoHtml = '<img src="' . dol_escape_htmltag($logoUrl) . '" alt="Logo">';
 }
 ?>

@@ -75,12 +75,12 @@ $myparam = GETPOST('myparam', 'alpha');
 $dtaFile= null;
 
 // Access control
-if ($user->societe_id > 0) {
+if (swisspayments_user_socid($user) > 0) {
 	// External user
 	accessforbidden();
 }
 
-if (!$user->rights->swisspayments->paydta->dopay) {
+if (!swisspayments_user_has_right($user, 'swisspayments', 'paydta', 'dopay')) {
 	accessforbidden();
 }
 
@@ -92,10 +92,10 @@ $socid=GETPOST('socid','int');
 $option = GETPOST('option');
 
 // Security check
-if ($user->societe_id > 0)
+if (swisspayments_user_socid($user) > 0)
 {
 	$action = '';
-	$socid = $user->societe_id;
+	$socid = swisspayments_user_socid($user);
 }
 
 if (isset($_REQUEST["payh"]))

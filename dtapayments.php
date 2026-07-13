@@ -71,12 +71,12 @@ $id = GETPOST('id', 'int');
 $action = GETPOST('action', 'showcodefield');
 
 // Access control
-if ($user->societe_id > 0) {
+if (swisspayments_user_socid($user) > 0) {
 	// External user
 	accessforbidden();
 }
 
-if (! $user->rights->swisspayments->paydta) accessforbidden();
+if (! swisspayments_user_has_right($user, 'swisspayments', 'paydta', 'dopay')) accessforbidden();
 
 // Apply any pending DB schema migration after a plain file/zip update (no module
 // disable/re-enable needed). No-op once the schema-version constant is up to date.
@@ -86,10 +86,10 @@ $socid=GETPOST('socid','int');
 $option = GETPOST('option');
 
 // Security check
-if ($user->societe_id > 0)
+if (swisspayments_user_socid($user) > 0)
 {
 	$action = '';
-	$socid = $user->societe_id;
+	$socid = swisspayments_user_socid($user);
 }
 
 $sortfield = GETPOST("sortfield",'alpha');
@@ -255,7 +255,7 @@ $title=$langs->trans("BillsSuppliersUnpaid");
 $facturestatic=new FactureFournisseur($db);
 $companystatic=new Societe($db);
 
-if ($user->rights->fournisseur->facture->lire)
+if (swisspayments_user_has_right($user, 'fournisseur', 'facture', 'lire'))
 {
 	$sql = "SELECT s.rowid as socid, s.nom as name, s.zip, s.town,";
 	$sql.= " f.rowid, f.ref, f.ref_supplier, f.total_ht, f.total_ttc,";
@@ -264,9 +264,9 @@ if ($user->rights->fournisseur->facture->lire)
 	$sql.= " ,sum(pf.amount) as am";
 	$sql.= " ,f.total_ht-IFNULL(sum(pf.amount),0) as stilltopay";
 	$sql.= " ,sff.esrpartynr, sff.esrline, sff.iban as billiban, sr.rowid as ribid, sr.iban_prefix, sr.bic ";
-	if (! $user->rights->societe->client->voir && ! $socid) $sql .= ", sc.fk_soc, sc.fk_user ";
+	if (! swisspayments_user_has_right($user, 'societe', 'client', 'voir') && ! $socid) $sql .= ", sc.fk_soc, sc.fk_user ";
 	$sql.= " FROM ".MAIN_DB_PREFIX."societe as s";
-	if (! $user->rights->societe->client->voir && ! $socid) $sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
+	if (! swisspayments_user_has_right($user, 'societe', 'client', 'voir') && ! $socid) $sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."facture_fourn as f on  f.fk_soc = s.rowid";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."paiementfourn_facturefourn as pf ON f.rowid=pf.fk_facturefourn ";
 	$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."swisspayments_factf as sff ON f.rowid=sff.fk_factid AND sff.entity IN (".getEntity('swisspaymentsfactf').") ";
@@ -275,7 +275,7 @@ if ($user->rights->fournisseur->facture->lire)
 	$sql.= " AND f.fk_soc = s.rowid";
 	$sql.= " AND f.paye = 0 AND f.fk_statut = 1";
 	if ($option == 'late') $sql.=" AND f.date_lim_reglement < '".$db->idate(dol_now() - $conf->facture->fournisseur->warning_delay)."'";
-	if (! $user->rights->societe->client->voir && ! $socid) $sql .= " AND s.rowid = sc.fk_soc AND sc.fk_user = " .$user->id;
+	if (! swisspayments_user_has_right($user, 'societe', 'client', 'voir') && ! $socid) $sql .= " AND s.rowid = sc.fk_soc AND sc.fk_user = " .$user->id;
 	if ($socid) $sql .= " AND s.rowid = ".$socid;
 
 	if (GETPOST('filtre'))
@@ -322,7 +322,7 @@ if ($user->rights->fournisseur->facture->lire)
 	}
 
 	$sql.= " GROUP BY s.rowid, s.nom, f.rowid, f.ref, f.ref_supplier, f.total_ht, f.total_ttc, f.datef, f.date_lim_reglement, f.paye, f.fk_statut";
-	if (! $user->rights->societe->client->voir && ! $socid) $sql .= ", sc.fk_soc, sc.fk_user ";
+	if (! swisspayments_user_has_right($user, 'societe', 'client', 'voir') && ! $socid) $sql .= ", sc.fk_soc, sc.fk_user ";
         // $sql .= " having esrpartynr is not null or (iban_prefix is not null and bic is not null) ";
 	$sql.=$db->order($sortfield,$sortorder);
 	if (! in_array("f.ref_supplier",explode(',',$sortfield))) $sql.= ", f.ref_supplier DESC";
@@ -598,7 +598,7 @@ if ($user->rights->fournisseur->facture->lire)
                     print '<td rowspan="3" valign="top">';
                     print '<textarea name="comment" wrap="soft" cols="60" rows="'.ROWS_3.'">'.(empty($_POST['comment'])?'':dol_escape_htmltag($_POST['comment'])).'</textarea></td></tr>';
                     print '<tr><td>'.$langs->trans('Numero').'</td><td><input name="num_paiement" type="text" value="'.(empty($_POST['num_paiement'])?date('Y-m-d-H:i'):dol_escape_htmltag($_POST['num_paiement'])).'"></td></tr>';
-                    if (! empty($conf->banque->enabled))
+                    if (swisspayments_mod_enabled('banque'))
                     {
                         print '<tr><td class="fieldrequired">'.$langs->trans('Account').'</td><td>';
                         $form->select_comptes(empty($accountid)?'1':$accountid,'accountid',0,'',2);

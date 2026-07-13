@@ -291,4 +291,91 @@ function swisspayments_check_db_version($db, $conf) {
 	$conf->global->SWISSPAYMENTS_DB_VERSION = $current;
 	return 1;
 }
-	
+
+/*
+ * Cross-version Dolibarr compatibility shims (supports 15.x through 24.x).
+ *
+ * The module must run on Dolibarr 15 as well as 24. Several modern APIs
+ * (User::hasRight(), getDolGlobalString(), isModEnabled()) were introduced in
+ * Dolibarr 16+, while the classic accessors ($user->rights->..., $conf->global->...,
+ * $user->societe_id) are deprecated in recent releases and emit notices. These
+ * helpers prefer the modern API when it is available at runtime and fall back to
+ * the legacy accessor otherwise, so callers stay clean on every supported version.
+ */
+
+/**
+ * Check a user permission across Dolibarr versions.
+ * Uses User::hasRight() (Dolibarr 16+) when available, else walks $user->rights.
+ *
+ * @param User   $user    Current user
+ * @param string $module  Module rights class (e.g. 'swisspayments')
+ * @param string $l1      First permission level (e.g. 'invoices')
+ * @param string $l2      Optional second permission level (e.g. 'create')
+ * @return bool           True if the permission is granted
+ */
+function swisspayments_user_has_right($user, $module, $l1, $l2 = '')
+{
+	if (is_object($user) && method_exists($user, 'hasRight')) {
+		return (bool) $user->hasRight($module, $l1, $l2);
+	}
+	// Legacy fallback: navigate the rights stdClass tree defensively.
+	if (empty($user->rights->$module->$l1)) {
+		return false;
+	}
+	if ($l2 === '') {
+		return !empty($user->rights->$module->$l1);
+	}
+	return !empty($user->rights->$module->$l1->$l2);
+}
+
+/**
+ * Return the third-party id an (external) user is bound to, across versions.
+ * Prefers $user->socid; falls back to the deprecated $user->societe_id alias.
+ *
+ * @param User $user Current user
+ * @return int       Third-party id (0 for internal users)
+ */
+function swisspayments_user_socid($user)
+{
+	if (isset($user->socid) && $user->socid > 0) {
+		return (int) $user->socid;
+	}
+	if (isset($user->societe_id) && $user->societe_id > 0) {
+		return (int) $user->societe_id;
+	}
+	return 0;
+}
+
+/**
+ * Read a Dolibarr global constant as a string, across versions.
+ * Uses getDolGlobalString() (Dolibarr 16+) when available, else $conf->global.
+ *
+ * @param string $key     Constant name
+ * @param string $default Value returned when the constant is unset/empty
+ * @return string
+ */
+function swisspayments_conf_string($key, $default = '')
+{
+	if (function_exists('getDolGlobalString')) {
+		return getDolGlobalString($key, $default);
+	}
+	global $conf;
+	return (isset($conf->global->$key) && $conf->global->$key !== '') ? (string) $conf->global->$key : $default;
+}
+
+/**
+ * Test whether a Dolibarr module is enabled, across versions.
+ * Uses isModEnabled() (Dolibarr 15+) when available, else the legacy
+ * $conf->{module}->enabled flag.
+ *
+ * @param string $module Module code (e.g. 'banque', 'facture')
+ * @return bool
+ */
+function swisspayments_mod_enabled($module)
+{
+	if (function_exists('isModEnabled')) {
+		return (bool) isModEnabled($module);
+	}
+	global $conf;
+	return !empty($conf->$module->enabled);
+}
