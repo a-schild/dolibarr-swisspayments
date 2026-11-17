@@ -97,6 +97,12 @@ $facture = null; // set once the supplier invoice has been created
  * Put here all code to do according to value of "action" parameter
  */
 
+// Invoice / due date as posted by the date selectors (<prefix>day/month/year). They are
+// read field by field: GETPOST(..., 'date') is not a valid check type and returns an
+// empty value on Dolibarr 20+.
+$factureDate = dol_mktime(12, 0, 0, GETPOST('facturedatemonth', 'int'), GETPOST('facturedateday', 'int'), GETPOST('facturedateyear', 'int'));
+$dueDate = dol_mktime(12, 0, 0, GETPOST('duedatemonth', 'int'), GETPOST('duedateday', 'int'), GETPOST('duedateyear', 'int'));
+
 if ($action == "createesrid") {
   if (GETPOST('socid', 'int') < 1) {
     setEventMessage($langs->trans('ErrorFieldRequired', $langs->transnoentities('Supplier')), 'errors');
@@ -105,12 +111,12 @@ if ($action == "createesrid") {
     $societe = new Societe($db);
     $societe->fetch(GETPOST('socid', 'int'));
   }
-  if (GETPOST('facturedate', 'date') < 1) {
-    setEventMessage($langs->trans('ErrorFieldRequired', $langs->transnoentities('facturedate')), 'errors');
+  if (empty($factureDate)) {
+    setEventMessage($langs->trans('ErrorFieldRequired', $langs->transnoentities('SwpInvoiceDate')), 'errors');
     $error++;
   }
-  if (GETPOST('duedate', 'date') < 1) {
-    setEventMessage($langs->trans('ErrorFieldRequired', $langs->transnoentities('duedate')), 'errors');
+  if (empty($dueDate)) {
+    setEventMessage($langs->trans('ErrorFieldRequired', $langs->transnoentities('SwpDueDate')), 'errors');
     $error++;
   }
 }
@@ -177,206 +183,102 @@ if ($result > 0) {
     }
   }
   else if ($myobject->isQRCode) {
-      // Is a QR bill
-    if ($action == "createesrid")
-    {
-      $soc_id= $_POST["socid"];
-      // For QR bills the invoice number ("Rechnung Nr.") is exactly what the user typed;
-      // it must never be derived from the QR reference line (ESR findBillno logic). Apply
-      // it up front so the duplicate check and the created invoice both use it.
-      $myobject->setBillno($_POST["billnr"]);
-      $sql= "select * from ".MAIN_DB_PREFIX."societe_rib where REPLACE(iban_prefix, ' ', '')='".$db->escape($myobject->iban)."' AND fk_soc=".$soc_id;
-      $resql=$db->query($sql);
-      if ($resql)
-      {
-          if ($db->num_rows($resql) >= 1)
-          {
-            // OK Exists
-          }
-          else if ($db->num_rows($resql) == 0)
-          {
-            $db->begin(); // Begin transaction
-              $cba= new CompanyBankAccount($db);
-              $cba->type="ban";
-              $cba->socid= $soc_id;
-              $cba->label= "QR Bill";
-              $cba->bank= "QR Bill";
-              $cba->iban= $myobject->iban;
-              $cba->proprio= $myobject->payToName;// Lieferant Name
-              $cba->owner_address= $myobject->payToAddress;
-              $cba->default_rib= 1;
-              $result = $cba->create($user, 0);
-              if ($result < 0) {
-                $mesg = $cba->error;
-                $error++;
-                $db->rollback(); // Rollback transaction
-              } else {
-                $cba->update($user);
-                $db->commit(); // End transaction
-              }
-          }
-      }
-      $db->free($resql);
+    // Is a QR bill. Supplier bank accounts are matched in PHP through
+    // swisspayments_find_ribs_by_iban(): Dolibarr 18+ stores societe_rib.iban_prefix
+    // encrypted, so an SQL comparison on that column cannot find the supplier.
+    $postedSocid = (int) GETPOST('socid', 'int');
+    // For QR bills the invoice number ("Rechnung Nr.") is exactly what the user typed;
+    // it is never derived from the QR reference line (that was ESR logic).
+    $postedBillnr = trim((string) GETPOST('billnr', 'alphanohtml'));
+    $myobject->setBillno($postedBillnr);
 
-      // The payment file is generated for the supplier's DEFAULT bank account. When the
-      // user opted in, make the scanned IBAN (whose RIB was just ensured above) the
-      // default, so a multi-account supplier is paid on the account this bill uses.
-      if (GETPOST('set_default_iban', 'int') && $myobject->iban) {
-        $db->query("UPDATE " . MAIN_DB_PREFIX . "societe_rib SET default_rib=0 WHERE fk_soc=" . ((int) $soc_id));
-        $db->query("UPDATE " . MAIN_DB_PREFIX . "societe_rib SET default_rib=1 WHERE fk_soc=" . ((int) $soc_id) . " AND REPLACE(iban_prefix, ' ', '')='" . $db->escape($myobject->iban) . "'");
+    if ($action == "createesrid" && $postedSocid > 0 && $societe->id > 0) {
+      // The user assigned the bill to a supplier: make sure that supplier has a bank
+      // account with the scanned IBAN.
+      $ribs = swisspayments_find_ribs_by_iban($db, $myobject->iban, $postedSocid);
+      if (count($ribs) == 0) {
+        $db->begin(); // Begin transaction
+        $cba = new CompanyBankAccount($db);
+        $cba->type = "ban";
+        $cba->socid = $postedSocid;
+        $cba->label = "QR Bill";
+        $cba->bank = "QR Bill";
+        $cba->iban = $myobject->iban;
+        $cba->proprio = $myobject->payToName; // Lieferant Name (Dolibarr < 20)
+        $cba->owner_name = $myobject->payToName; // renamed property, Dolibarr 20+
+        $cba->owner_address = $myobject->payToAddress;
+        $cba->default_rib = 1;
+        $result = $cba->create($user, 0);
+        if ($result < 0) {
+          $mesg = $cba->error;
+          $error++;
+          $db->rollback(); // Rollback transaction
+        } else {
+          $cba->update($user);
+          $db->commit(); // End transaction
+          $ribs = swisspayments_find_ribs_by_iban($db, $myobject->iban, $postedSocid);
+        }
+      }
+
+      // The payment file falls back to the supplier's DEFAULT bank account for bills
+      // without a stored IBAN. When the user opted in, make the scanned IBAN the default.
+      if (GETPOST('set_default_iban', 'int') && count($ribs) > 0) {
+        $db->query("UPDATE " . MAIN_DB_PREFIX . "societe_rib SET default_rib=0 WHERE fk_soc=" . $postedSocid);
+        $db->query("UPDATE " . MAIN_DB_PREFIX . "societe_rib SET default_rib=1 WHERE rowid=" . ((int) $ribs[0]->rowid));
       }
 
       $newESRSoc = new Swisspaymentssoc($db);
-      if ($newESRSoc->fetch(null, null, null, null, $soc_id) > 0 && $newESRSoc->id) {
+      if ($newESRSoc->fetch(null, null, null, null, $postedSocid) > 0 && $newESRSoc->id) {
         dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
-        // Bill number already set from the form above.
-      }
-      else if ($_POST["billnr"])
-      {
+      } else if ($postedBillnr !== '') {
         $newESRSoc = new Swisspaymentssoc($db);
         $newESRSoc->fk_societe = $societe->id;
         $newESRSoc->esrid = "QRBILL";
         // startorderno/endorderno mark where the bill number sits inside the reference
         // (legacy ESR logic). For QR bills the bill number is not part of the reference,
         // so strpos() often returns false - coerce to 0 to avoid an invalid INT insert.
-        $startPos = strpos((string) $myobject->refLine, (string) $_POST["billnr"]);
+        $startPos = strpos((string) $myobject->refLine, $postedBillnr);
         $newESRSoc->startorderno = ($startPos === false) ? 0 : $startPos;
-        $newESRSoc->endorderno = $newESRSoc->startorderno + strlen((string) $_POST["billnr"]);
+        $newESRSoc->endorderno = $newESRSoc->startorderno + strlen($postedBillnr);
         $result = $newESRSoc->create($user);
         if ($result < 0) {
           $mesg = $newESRSoc->error;
           $error++;
-        } else {
-          // Keep the invoice number the user entered; findBillno() would overwrite it
-          // with a slice of the QR reference (ESR position logic, wrong for QR bills).
-          $myobject->setBillno($_POST["billnr"]);
         }
       }
-      
-      $sql= "select * from ".MAIN_DB_PREFIX."societe_rib where REPLACE(iban_prefix, ' ', '')='".$db->escape($myobject->iban)."'";
-        $resql=$db->query($sql);
-        if ($resql)
-        {
-            if ($db->num_rows($resql) == 1)
-            {
-                $obj = $db->fetch_object($resql);
-
-                $id    = $obj->rowid;
-                $iban_prefix= $obj->iban_prefix;
-                $fk_societe = $obj->fk_soc;
-                
-                //echo "<div>Found supplier (".$fk_societe.")</div>";
-                if ($myobject->iban != $iban_prefix)
-                {
-                  //echo "<div>Updating IBAN number to clean format (old $iban_prefix new $myobject->iban)</div>";
-                  $sql_upd= "update ".MAIN_DB_PREFIX."societe_rib set iban_prefix ='".$db->escape($myobject->iban)."' where rowid=".$id;
-                  $db->query($sql_upd);
-                }
-
-                dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
-                $societe = new Societe($db);
-                $result = $societe->fetch($fk_societe);
-                
-                // Now check billNr for duplicates
-                $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
-                if ($resql) {
-                  $num = $db->num_rows($resql);
-                  $i = 0;
-                  if ($num > 0) {
-                    $warn++;
-                    $mesg = $langs->trans('SwpInvoiceExistsChange', $myobject->billnr);
-                  }
-                }
-            }
-            else if ($db->num_rows($resql) > 1)
-            {
-              setEventMessage($langs->trans('SwpMultipleAccountsSameIban', $db->num_rows($resql)), 'warnings');
-            }
-            else
-            {
-              dol_syslog(__METHOD__ . " No supplier account found for IBAN " . $myobject->iban, LOG_INFO);
-            }
-            $db->free($resql);
-        }
-        else
-        {
-            setEventMessage($langs->trans('SwpDbError', $db->lasterror()), 'errors');
-        }
-      
     }
-    else
-    {
-       $sql= "select * from ".MAIN_DB_PREFIX."societe_rib where REPLACE(iban_prefix, ' ', '')='".$db->escape($myobject->iban)."'";
-        $resql=$db->query($sql);
-        if ($resql)
-        {
-            if ($db->num_rows($resql) == 1)
-            {
-                $obj = $db->fetch_object($resql);
 
-                $id    = $obj->rowid;
-                $iban_prefix= $obj->iban_prefix;
-                $fk_societe = $obj->fk_soc;
-                
-                //echo "<div>Found supplier (".$fk_societe.")</div>";
-                if ($myobject->iban != $iban_prefix)
-                {
-                  //echo "<div>Updating IBAN number to clean format (old $iban_prefix new $myobject->iban)</div>";
-                  $sql_upd= "update ".MAIN_DB_PREFIX."societe_rib set iban_prefix ='".$db->escape($myobject->iban)."' where rowid=".$id;
-                  $db->query($sql_upd);
-                }
+    if (!($societe->id > 0)) {
+      // Identify the supplier by the scanned IBAN (restricted to the supplier carried
+      // by the form, if any, so a second supplier sharing the IBAN does not get in the way).
+      $ribs = swisspayments_find_ribs_by_iban($db, $myobject->iban, $postedSocid);
+      $socids = array();
+      foreach ($ribs as $rib) {
+        $socids[$rib->fk_soc] = $rib->fk_soc;
+      }
+      if (count($socids) == 1) {
+        dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
+        $societe = new Societe($db);
+        $result = $societe->fetch(reset($socids));
+      } else if (count($socids) > 1) {
+        setEventMessage($langs->trans('SwpMultipleAccountsSameIban', count($socids)), 'warnings');
+      } else {
+        dol_syslog(__METHOD__ . " No supplier account found for IBAN " . $myobject->iban, LOG_INFO);
+      }
+    }
 
-                dol_syslog(__METHOD__ . " matching supplier found, assigning", LOG_DEBUG);
-                $societe = new Societe($db);
-                $result = $societe->fetch($fk_societe);
-                
-                if (empty($_POST["billnr"]))
-                {
-                  $newESRSoc = new Swisspaymentssoc($db);
-                  if ($newESRSoc->fetch(null, null, null, null, $fk_societe) > 0 && $newESRSoc->id) {
-                    $myobject->findBillno($newESRSoc->startorderno, $newESRSoc->endorderno);
-                  }
-                }
-
-                // Now check billNr for duplicates
-                $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
-                if ($resql) {
-                  $num = $db->num_rows($resql);
-                  $i = 0;
-                  if ($num > 0) {
-                    $error++;
-                    $mesg = $langs->trans('SwpInvoiceExistsChange', $myobject->billnr);
-                  }
-                }
-
-//                $resql=$db->query("select * from llx_facture_fourn where fk_soc=" . $fk_societe . " and ref_supplier='".$db->escape($qr_lines[28]) ."'");
-//                if ($resql)
-//                {
-//                    $num = $db->num_rows($resql);
-//                    $i = 0;
-//                    if ($num > 0)
-//                    {
-//                        $warn++;
-//                        $mesg= "Rechnung Nr. " . $qr_lines[28]. " existiert f&uumlr diesen Lieferanten schon, bitte Rechnungsnummer &auml;ndern";
-//                    }
-//                }
-//                $myobject = new SwisspaymentsClass($db);
-                
-            }
-            else if ($db->num_rows($resql) > 1)
-            {
-              setEventMessage($langs->trans('SwpMultipleAccountsSameIban', $db->num_rows($resql)), 'warnings');
-            }
-            else
-            {
-              dol_syslog(__METHOD__ . " No supplier account found for IBAN " . $myobject->iban, LOG_INFO);
-            }
-            $db->free($resql);
+    // Check the typed invoice number for duplicates at this supplier.
+    if ($societe->id > 0 && $myobject->billnr !== '') {
+      $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
+      if ($resql) {
+        if ($db->num_rows($resql) > 0) {
+          $error++;
+          $mesg = $langs->trans('SwpInvoiceExistsChange', $myobject->billnr);
         }
-        else
-        {
-            setEventMessage($langs->trans('SwpDbError', $db->lasterror()), 'errors');
-        }
+        $db->free($resql);
+      } else {
+        setEventMessage($langs->trans('SwpDbError', $db->lasterror()), 'errors');
+      }
     }
   }
 } else {
@@ -418,6 +320,9 @@ if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
     }
     $newSoc->fournisseur = 1;
     $newSoc->client = 0;
+    // Let the configured numbering module assign the supplier code. Without this,
+    // setups where the supplier code is mandatory reject the new third party.
+    $newSoc->code_fournisseur = 'auto';
     if ($newSoc->create($user) < 0) {
       $error++;
       setEventMessage($newSoc->error ? $newSoc->error : implode(', ', $newSoc->errors), 'errors');
@@ -430,7 +335,8 @@ if ($action == "createsupplier" && $result > 0 && $myobject->isQRCode) {
       $cba->label = "QR Bill";
       $cba->bank = "QR Bill";
       $cba->iban = $myobject->iban;
-      $cba->proprio = $myobject->payToName;
+      $cba->proprio = $myobject->payToName; // Dolibarr < 20
+      $cba->owner_name = $myobject->payToName; // renamed property, Dolibarr 20+
       $cba->owner_address = $myobject->payToAddress;
       $cba->default_rib = 1;
       if ($cba->create($user, 0) < 0) {
@@ -485,8 +391,8 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
       $facture->socid = $societe->id;
       $facture->datec = getdate();
       //$facture->date= getdate();
-      $facture->datef = dol_mktime(12, 0, 0, $_POST['facturedatemonth'], $_POST['facturedateday'], $_POST['facturedateyear']);
-      $facture->date_echeance = dol_mktime(12, 0, 0, $_POST['duedatemonth'], $_POST['duedateday'], $_POST['duedateyear']);
+      $facture->datef = $factureDate;
+      $facture->date_echeance = $dueDate;
       $facture->type = 0;
       $facture->cond_reglement_id = $societe->cond_reglement_supplier_id;
       $facture->mode_reglement_id = $societe->mode_reglement_supplier_id;
@@ -566,7 +472,7 @@ $form = new Form($db);
 // Only show the review step when we actually parsed a usable payment (IBAN or PC account);
 // a failed parse falls back to the entry step with the error message.
 $parsedOk = (!empty($myobject->iban) || !empty($myobject->pcAccount));
-$inReview = !($facture && $facture->id > 0) && $parsedOk && ($action == 'createesrid' || $action == 'analyzecode' || $action == 'createsupplier');
+$inReview = !($facture && $facture->id > 0) && $parsedOk && ($action == 'createesrid' || $action == 'createfacture' || $action == 'analyzecode' || $action == 'createsupplier');
 
 // Wizard step indicator
 $step = $inReview ? 2 : 1;
@@ -688,7 +594,7 @@ if ($inReview) {
     if ($scannedIban !== '') {
       $defaultRibIban = '';
       $rqDef = $db->query("SELECT iban_prefix FROM " . MAIN_DB_PREFIX . "societe_rib WHERE fk_soc=" . ((int) $societe->id) . " AND default_rib=1");
-      if ($rqDef && $db->num_rows($rqDef) > 0) { $oDef = $db->fetch_object($rqDef); $defaultRibIban = strtoupper(str_replace(' ', '', (string) $oDef->iban_prefix)); }
+      if ($rqDef && $db->num_rows($rqDef) > 0) { $oDef = $db->fetch_object($rqDef); $defaultRibIban = swisspayments_norm_iban($oDef->iban_prefix); }
       if ($defaultRibIban !== '' && $defaultRibIban !== $scannedIban) {
         print '<tr><td width="30%">' . $langs->trans('SwpDefaultAccount') . '</td><td>';
         print img_warning() . ' ' . $langs->trans('SwpIbanNotDefaultWarn', $myobject->iban, $defaultRibIban) . '<br>';
@@ -699,7 +605,7 @@ if ($inReview) {
     if (!$myobject->hasAmount) print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('Amount') . '</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
-    print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpCreateInvoice')) . '"></div>';
+    print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->transnoentities('SwpCreateInvoice')) . '"></div>';
     print '<input type="hidden" name="action" value="' . ($action == 'createesrid' ? 'createfacture' : 'createesrid') . '">';
     print '</form>';
   } else {
@@ -711,12 +617,12 @@ if ($inReview) {
     print '<table class="border" width="100%">';
     print '<tr class="liste_titre"><td colspan="2">' . $langs->trans('SwpAssignExistingSupplier') . '</td></tr>';
     print '<tr><td width="30%" class="fieldrequired">' . $langs->trans('Supplier') . '</td><td>';
-    print $form->select_company(GETPOST('socid', 'int'), 'socid', 's.fournisseur = 1', 1);
+    print $form->select_company(GETPOST('socid', 'int'), 'socid', swisspayments_supplier_filter(), 1);
     print '</td></tr>';
     if (!$myobject->hasAmount) print '<tr><td class="fieldrequired">' . $langs->trans('Amount') . '</td><td><input type="text" name="amount" value="' . dol_escape_htmltag(GETPOST('amount', 'alpha')) . '"></td></tr>';
     $renderInvoiceFields();
     print '</table><br>';
-    print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpAssignAndCreateInvoice')) . '"></div>';
+    print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->transnoentities('SwpAssignAndCreateInvoice')) . '"></div>';
     print '<input type="hidden" name="action" value="' . ($action == 'createesrid' ? 'createfacture' : 'createesrid') . '">';
     print '</form>';
 
@@ -736,7 +642,7 @@ if ($inReview) {
       print '<tr><td class="fieldrequired">' . $langs->trans('SwpCountry') . '</td><td><input type="text" name="new_country" size="4" value="' . dol_escape_htmltag($myobject->payToCountry ? $myobject->payToCountry : 'CH') . '"></td></tr>';
       print '<tr><td>IBAN</td><td>' . dol_escape_htmltag($myobject->iban) . '</td></tr>';
       print '</table><br>';
-      print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpCreateSupplier')) . '"></div>';
+      print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->transnoentities('SwpCreateSupplier')) . '"></div>';
       print '<input type="hidden" name="action" value="createsupplier">';
       print '</form>';
     }
@@ -773,7 +679,7 @@ if ($inReview) {
   print '<table class="border" width="100%">';
   print '<tr><td width="30%">QR-Code</td><td><textarea name="qrcode" id="qrcode" rows="6" cols="60"></textarea></td></tr>';
   print '</table><br>';
-  print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->trans('SwpRead')) . '"></div>';
+  print '<div class="center"><input type="submit" class="button" value="' . dol_escape_htmltag($langs->transnoentities('SwpRead')) . '"></div>';
   print '<input type="hidden" name="action" value="analyzecode">';
   print '</form><br>';
 

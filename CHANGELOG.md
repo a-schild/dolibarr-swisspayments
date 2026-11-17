@@ -7,6 +7,45 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.11.2] – 2026-11-17
+
+All fixes below were reproduced and verified on a running Dolibarr 24.0.2 instance.
+
+### Fixed
+- **Supplier selector showed a technical error on Dolibarr 20+** ("Bestehendem Lieferant
+  zuweisen" in `createinvoice.php`). `Form::select_company()` was given a raw SQL filter
+  (`s.fournisseur = 1`); Dolibarr 20+ only accepts the Universal Search Filter syntax.
+  The filter now comes from `swisspayments_supplier_filter()`, which returns
+  `(s.fournisseur:=:1)` on Dolibarr 18+ and the raw SQL form on older releases. As a
+  consequence no supplier could be assigned (`Column 'fk_societe' cannot be null`).
+- **"Invoice date / due date required" although both were filled in.** The dates were
+  checked with `GETPOST(..., 'date')`, which is not a valid check type and returns an
+  empty value on Dolibarr 20+. They are now read from the day/month/year fields of the
+  date selector.
+- **"Supplier code required" when creating a supplier from the QR data.** The new third
+  party is now created with `code_fournisseur = 'auto'`, so the configured numbering
+  module assigns the supplier code.
+- **Known suppliers were not recognised on Dolibarr 18+.** `societe_rib.iban_prefix` is
+  stored encrypted there, so the SQL lookup of the scanned IBAN never matched and every
+  scan ended in "unknown supplier"; the "IBAN is not the default account" warning showed
+  the encrypted value. IBANs are now matched on the decrypted value
+  (`swisspayments_find_ribs_by_iban()`, `swisspayments_decrypt()`), also for the
+  default-RIB fallback in the payment list (`dtapayments.php`).
+- **Menu entries showed `SwpMenuReadInvoice` / `SwpMenuPayInvoice`.** The menu
+  definitions did not reference the module language file. Existing installations are
+  repaired automatically on the first module page load after the update.
+- **A failed invoice creation dropped back to the QR entry step**, losing the scanned
+  bill. The review step is now shown again together with the error.
+- The invoice number typed for a QR-bill was ignored when the form was submitted a second
+  time (the QR reference was used instead).
+- **Fatal error on the first page load after a zip update**
+  (`Call to undefined function dolibarr_set_const()`): the runtime schema guard
+  `swisspayments_check_db_version()` did not load `admin.lib.php`.
+- The account owner of a supplier bank account created from a QR-bill was stored empty on
+  Dolibarr 20+ (property renamed from `proprio` to `owner_name`); both are now set.
+- Button label showed a literal `&AMP;` ("Zuweisen &AMP; Rechnung erstellen").
+- The posted supplier id is now cast to an integer before being used in SQL.
+
 ## [2026.11.1] – 2026-11-17
 
 ### Fixed
