@@ -58,7 +58,7 @@ $langs->load("swisspayments@swisspayments");
 
 // Get parameters
 $id = GETPOST('id', 'int');
-$action = GETPOST('action', 'showcodefield');
+$action = GETPOST('action', 'aZ09');
 
 // Access control
 if (swisspayments_user_socid($user) > 0) {
@@ -89,6 +89,7 @@ $societe = new Societe($db);
 $error = 0;
 $warn = 0;
 $mesg = '';
+$facture = null; // set once the supplier invoice has been created
 
 /*
  * ACTIONS
@@ -115,7 +116,7 @@ if ($action == "createesrid") {
 }
 
 $myobject = new SwisspaymentsClass($db);
-$myobject->setCodeline($_POST["codeline"], $_POST["qrcode"]);
+$myobject->setCodeline(isset($_POST["codeline"]) ? $_POST["codeline"] : '', isset($_POST["qrcode"]) ? $_POST["qrcode"] : '');
 
 $result = $myobject->validateCode($user);
 if ($result > 0) {
@@ -329,7 +330,7 @@ if ($result > 0) {
                 $societe = new Societe($db);
                 $result = $societe->fetch($fk_societe);
                 
-                if (! $_POST["billnr"])
+                if (empty($_POST["billnr"]))
                 {
                   $newESRSoc = new Swisspaymentssoc($db);
                   if ($newESRSoc->fetch(null, null, null, null, $fk_societe) > 0 && $newESRSoc->id) {

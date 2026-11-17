@@ -68,7 +68,7 @@ $langs->load("swisspayments@swisspayments");
 
 // Get parameters
 $id = GETPOST('id', 'int');
-$action = GETPOST('action', 'showcodefield');
+$action = GETPOST('action', 'aZ09');
 
 // Access control
 if (swisspayments_user_socid($user) > 0) {

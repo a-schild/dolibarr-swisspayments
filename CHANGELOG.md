@@ -7,6 +7,21 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.11.1] – 2026-11-17
+
+### Fixed
+- **Reading a QR-bill did nothing on Dolibarr 20+** (`createinvoice.php`): after
+  pressing "Read" the QR field was simply emptied and the review step never appeared,
+  without any error message. The page read its `action` parameter with
+  `GETPOST('action', 'showcodefield')` — the second argument is the *sanitizing check
+  type*, not a default value. Up to Dolibarr 19 an unknown check type passed the value
+  through unchanged; since Dolibarr 20 `sanitizeVal()` discards it, so `action` was
+  always empty and the page fell back to the entry step. The parameter is now read
+  with the `aZ09` check (also in `dtapayments.php` and `dtafile.php`, where it was
+  harmless but logged an error on every request).
+- PHP 8 warnings on `createinvoice.php` (`Undefined array key "codeline"`,
+  `Undefined variable $facture`).
+
 ## [2026.07.6] – 2026-07-13
 
 ### Changed
