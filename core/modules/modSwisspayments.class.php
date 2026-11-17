@@ -19,7 +19,7 @@ class modswisspayments extends DolibarrModules
 {
 
 	/** Current module version (single source of truth; bump on each release). */
-	const VERSION = '2026.11.1';
+	const VERSION = '2026.11.2';
 
 	/**
 	 * 	Constructor. Define names, constants, directories, boxes, permissions
@@ -377,6 +377,7 @@ class modswisspayments extends DolibarrModules
                 $this->menu[$r]=array('fk_menu'=>'fk_mainmenu=billing,fk_leftmenu=suppliers_bills',
                   'type'=>'left',                             // This is a Left menu entry
                   'titre'=>'SwpMenuReadInvoice',
+                  'langs'=>'swisspayments@swisspayments',
                   'mainmenu'=>'billing',
                   'leftmenu'=>'swisspayments',
                   'url'=>'/swisspayments/createinvoice.php',
@@ -390,6 +391,7 @@ class modswisspayments extends DolibarrModules
                 $this->menu[$r]=array('fk_menu'=>'fk_mainmenu=billing,fk_leftmenu=suppliers_bills',
                   'type'=>'left',                             // This is a Left menu entry
                   'titre'=>'SwpMenuPayInvoice',
+                  'langs'=>'swisspayments@swisspayments',
                   'mainmenu'=>'billing',
                   'leftmenu'=>'swisspayments',
                   'url'=>'/swisspayments/dtapayments.php',

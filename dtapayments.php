@@ -443,7 +443,8 @@ if (swisspayments_user_has_right($user, 'fournisseur', 'facture', 'lire'))
                                 $validQRR= preg_match('/^[0-9]{1,27}$/', $esrline) && isValidCheckDigit($esrline);
                                 // Prefer the IBAN stored with this bill (mirrors Swisspaymentspayh::createDTA);
                                 // fall back to the supplier's default RIB for legacy bills without one.
-                                $creditorIban= trim((string) $objp->billiban) !== '' ? $objp->billiban : $objp->iban_prefix;
+                                // societe_rib.iban_prefix is stored encrypted on Dolibarr 18+ -> decrypt it.
+                                $creditorIban= trim((string) $objp->billiban) !== '' ? $objp->billiban : swisspayments_decrypt($objp->iban_prefix);
                                 $qrIban= strtoupper(str_replace(' ', '', (string) $creditorIban));
                                 $isQRIBAN= preg_match('/^(CH|LI)[0-9]{2}3/', $qrIban);
                                 $isChLiIban= preg_match('/^(CH|LI)[0-9]{2}/', $qrIban);

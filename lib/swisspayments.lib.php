@@ -282,7 +282,10 @@ function swisspayments_check_db_version($db, $conf) {
 	if ($stored !== '' && version_compare($stored, $current, '>=')) {
 		return 1; // schema already at or above the current version
 	}
+	// dolibarr_set_const() lives in admin.lib.php, which ordinary pages do not load.
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 	swisspayments_migrate_tables($db);
+	swisspayments_fix_menu_langs($db);
 	dolibarr_set_const($db, 'SWISSPAYMENTS_DB_VERSION', $current, 'chaine', 0, '', $conf->entity);
 	// Reflect it in memory so the guard is a no-op for the rest of this request.
 	if (!isset($conf->global)) {
@@ -378,4 +381,106 @@ function swisspayments_mod_enabled($module)
 	}
 	global $conf;
 	return !empty($conf->$module->enabled);
+}
+
+/**
+ * Decrypt a value read straight from a Dolibarr table, across versions.
+ * Dolibarr 18+ stores sensitive columns such as societe_rib.iban_prefix encrypted
+ * ("dolcrypt:..."); dolDecrypt() returns plain values unchanged. Older releases have
+ * no dolDecrypt() and store the value in clear text.
+ *
+ * @param string $value Raw column value
+ * @return string       Clear-text value
+ */
+function swisspayments_decrypt($value)
+{
+	$value = (string) $value;
+	if ($value !== '' && function_exists('dolDecrypt')) {
+		return (string) dolDecrypt($value);
+	}
+	return $value;
+}
+
+/**
+ * Normalize an IBAN read from the database or a QR code: decrypt, strip blanks, upper-case.
+ *
+ * @param string $value Raw IBAN (possibly encrypted, possibly with blanks)
+ * @return string
+ */
+function swisspayments_norm_iban($value)
+{
+	return strtoupper(preg_replace('/\s+/', '', swisspayments_decrypt($value)));
+}
+
+/**
+ * Find the third-party bank accounts (societe_rib) holding a given IBAN.
+ *
+ * The comparison is done in PHP on the decrypted value: since Dolibarr encrypts
+ * societe_rib.iban_prefix (with a random IV), an SQL "WHERE iban_prefix = '...'" can no
+ * longer match. Works unchanged on releases that store the IBAN in clear text.
+ *
+ * @param DoliDB $db
+ * @param string $iban   IBAN to look for
+ * @param int    $socid  Restrict to this third party (0 = all third parties of the entity)
+ * @return array         List of objects {rowid, fk_soc, default_rib, iban}; empty when none
+ */
+function swisspayments_find_ribs_by_iban($db, $iban, $socid = 0)
+{
+	$found = array();
+	$wanted = swisspayments_norm_iban($iban);
+	if ($wanted === '') {
+		return $found;
+	}
+	$sql = "SELECT sr.rowid, sr.fk_soc, sr.default_rib, sr.iban_prefix";
+	$sql .= " FROM ".MAIN_DB_PREFIX."societe_rib as sr";
+	$sql .= " INNER JOIN ".MAIN_DB_PREFIX."societe as s ON s.rowid = sr.fk_soc";
+	$sql .= " WHERE s.entity IN (".getEntity('societe').")";
+	$sql .= " AND sr.iban_prefix IS NOT NULL AND sr.iban_prefix <> ''";
+	if ($socid > 0) {
+		$sql .= " AND sr.fk_soc = ".((int) $socid);
+	}
+	$resql = $db->query($sql);
+	if ($resql) {
+		while ($obj = $db->fetch_object($resql)) {
+			if (swisspayments_norm_iban($obj->iban_prefix) === $wanted) {
+				$row = new stdClass();
+				$row->rowid = (int) $obj->rowid;
+				$row->fk_soc = (int) $obj->fk_soc;
+				$row->default_rib = (int) $obj->default_rib;
+				$row->iban = $wanted;
+				$found[] = $row;
+			}
+		}
+		$db->free($resql);
+	}
+	return $found;
+}
+
+/**
+ * Filter for Form::select_company() restricting the list to suppliers, across versions.
+ * Dolibarr 18+ expects the "Universal Search Filter" syntax (and 20+ rejects raw SQL);
+ * older releases only understand a raw SQL condition.
+ *
+ * @return string
+ */
+function swisspayments_supplier_filter()
+{
+	if (defined('DOL_VERSION') && version_compare(DOL_VERSION, '18.0.0', '>=')) {
+		return '(s.fournisseur:=:1)';
+	}
+	return 's.fournisseur = 1';
+}
+
+/**
+ * Make sure the module's menu entries reference the module language file, so their
+ * titles are translated. Entries created by releases up to 2026.11.1 had no language
+ * file and showed the raw key (e.g. "SwpMenuReadInvoice"). Idempotent.
+ *
+ * @param DoliDB $db
+ * @return void
+ */
+function swisspayments_fix_menu_langs($db)
+{
+	$db->query("UPDATE ".MAIN_DB_PREFIX."menu SET langs = 'swisspayments@swisspayments'"
+		." WHERE module = 'swisspayments' AND (langs IS NULL OR langs = '' OR langs = 'mymodule@mymodule')");
 }
