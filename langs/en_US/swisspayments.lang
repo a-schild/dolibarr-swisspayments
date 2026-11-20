@@ -52,6 +52,8 @@ SwpInvoiceExists=Invoice no. %s already exists for this supplier
 SwpInvoiceExistsChange=Invoice no. %s already exists for this supplier, please change the invoice number
 SwpDuplicateCheckError=Error during duplicate check
 SwpMultipleAccountsSameIban=Multiple accounts with the same IBAN found (%s). Please assign the supplier manually.
+SwpBankAccountNotAllowed=The selected bank account is not available for this company.
+SwpPayIdentExists=The payment number %s has already been used. Please enter a different number.
 SwpDbError=Database error: %s
 
 # dtapayments.php

@@ -169,7 +169,7 @@ if ($error > 0)
 }
 else
 {
-    $downloadUrl = DOL_URL_ROOT.'/document.php?modulepart=swisspayments&file='.urlencode('dtafiles/'.$dtaFile);
+    $downloadUrl = DOL_URL_ROOT.'/document.php?modulepart=swisspayments&entity='.((int) $conf->entity).'&file='.urlencode('dtafiles/'.$dtaFile);
 
     // Prominent download button with a download icon for the generated bank payment file.
     echo '<div class="center" style="margin:18px 0;">';

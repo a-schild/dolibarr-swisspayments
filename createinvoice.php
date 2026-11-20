@@ -147,7 +147,7 @@ if ($result > 0) {
           $myobject->amount = price2num(GETPOST("amount", 'alpha'));
         }
         // Now check billNr for duplicates
-        $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
+        $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND entity=" . ((int) $conf->entity) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
         if ($resql) {
           $num = $db->num_rows($resql);
           $i = 0;
@@ -269,7 +269,7 @@ if ($result > 0) {
 
     // Check the typed invoice number for duplicates at this supplier.
     if ($societe->id > 0 && $myobject->billnr !== '') {
-      $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
+      $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND entity=" . ((int) $conf->entity) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
       if ($resql) {
         if ($db->num_rows($resql) > 0) {
           $error++;
@@ -377,7 +377,7 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
 }
 
 if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid")) {
-  $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
+  $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND entity=" . ((int) $conf->entity) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
   if ($resql) {
     $num = $db->num_rows($resql);
     $i = 0;
@@ -402,8 +402,6 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
       // $facture->note_private= $myobject->codeline;
       $facture->ref_supplier = $myobject->billnr;
       $facture->libelle = $myobject->billnr;
-      $facture->entity = 0;
-      // $facture->en
 
       if ($facture->create($user) > 0) {
         $facture->addline("Lieferantenrechnung", $myobject->amount, NULL, NULL, NULL, 1);
@@ -512,10 +510,11 @@ $renderInvoiceFields = function () use ($form, $societe, $myobject, $db, $langs)
   $billnrDefault = $myobject->billnr;
   if ($myobject->isQRCode) {
     $sockid = (int) $societe->id;
-    $billnrTaken = function ($val) use ($db, $sockid) {
+    $billnrEntity = (int) $conf->entity;
+    $billnrTaken = function ($val) use ($db, $sockid, $billnrEntity) {
       $val = trim((string) $val);
       if ($sockid <= 0 || $val === '') return false;
-      $r = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . $sockid . " AND ref_supplier='" . $db->escape($val) . "'");
+      $r = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . $sockid . " AND entity=" . $billnrEntity . " AND ref_supplier='" . $db->escape($val) . "'");
       return ($r && $db->num_rows($r) > 0);
     };
     $typed = trim((string) GETPOST('billnr', 'alphanohtml'));

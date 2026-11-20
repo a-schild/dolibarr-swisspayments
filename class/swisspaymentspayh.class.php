@@ -448,7 +448,7 @@ class Swisspaymentspayh extends CommonObject {
 
                     $this->lines[$i]->fk_payh = $obj->fk_payh;
                     $this->lines[$i]->fk_payementfourn = $obj->fk_payementfourn;
-                    $this->lines[$i]->datec = $this->db->jdate($obj->datec);
+                    $this->lines[$i]->datec = isset($obj->datec) ? $this->db->jdate($obj->datec) : null;
 
                     $i++;
                 }
@@ -773,11 +773,13 @@ class Swisspaymentspayh extends CommonObject {
                 }
             }
 
-            dol_syslog("DOC path: " . DOL_DATA_ROOT);
-            $dtaPath= DOL_DATA_ROOT . "/swisspayments/dtafiles/";
+            // Entity-aware directory: must match what document.php resolves for
+            // modulepart=swisspayments (DOL_DATA_ROOT/<entity>/swisspayments for entity > 1).
+            $dtaPath= swisspayments_data_dir('dtafiles') . '/';
+            dol_syslog(__METHOD__ . " DTA path: " . $dtaPath, LOG_DEBUG);
             if (!file_exists($dtaPath))
             {
-                mkdir($dtaPath, 0777 , true);
+                dol_mkdir($dtaPath);
             }
             $outFileName= $dtaPath . $this->dtafile;
 

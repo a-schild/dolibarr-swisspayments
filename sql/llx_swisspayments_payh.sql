@@ -16,7 +16,6 @@ payident CHAR(80) NOT NULL,
 datec DATETIME,
 tms TIMESTAMP NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
 dtafile CHAR(80),
-PRIMARY KEY ( rowid ),
-UNIQUE (payident)
+PRIMARY KEY ( rowid )
 ) ENGINE = InnoDB ;
 

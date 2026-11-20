@@ -52,7 +52,8 @@ if ($data === null) {
 	echo json_encode(array('payload' => null, 'expired' => true));
 	exit;
 }
-if ((int) ($data['fk_user'] ?? 0) !== (int) $user->id) {
+// The pairing belongs to one user in one entity (company).
+if ((int) ($data['fk_user'] ?? 0) !== (int) $user->id || (int) ($data['entity'] ?? 0) !== (int) $conf->entity) {
 	echo json_encode(array('payload' => null));
 	exit;
 }
