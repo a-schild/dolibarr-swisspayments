@@ -155,7 +155,34 @@ function isValidScor($ref) {
 }
 
 /**
+ * Entity-aware data directory of the module. On a multicompany install core maps the
+ * module's documents to DOL_DATA_ROOT/<entity>/swisspayments for every entity other than
+ * 1, and document.php resolves downloads through the same mapping - so files must be
+ * written there, never to a hard-coded DOL_DATA_ROOT/swisspayments. For entity 1 (and on
+ * single-company installs) this is still DOL_DATA_ROOT/swisspayments.
+ *
+ * @param string $subdir  Optional sub directory (e.g. 'dtafiles')
+ * @return string         Path without trailing slash
+ */
+function swisspayments_data_dir($subdir = '') {
+	global $conf;
+	$dir = '';
+	if (isset($conf->swisspayments) && !empty($conf->swisspayments->multidir_output[$conf->entity])) {
+		$dir = $conf->swisspayments->multidir_output[$conf->entity];
+	} elseif (isset($conf->swisspayments) && !empty($conf->swisspayments->dir_output)) {
+		$dir = $conf->swisspayments->dir_output;
+	} else {
+		// Module not (yet) known to $conf, e.g. during the very first activation.
+		$dir = DOL_DATA_ROOT . ((int) $conf->entity > 1 ? '/' . ((int) $conf->entity) : '') . '/swisspayments';
+	}
+	$dir = rtrim($dir, '/');
+	return ($subdir !== '') ? $dir . '/' . trim($subdir, '/') : $dir;
+}
+
+/**
  * Directory (under the Dolibarr data root) that holds the mobile-scan pairing files.
+ * Deliberately NOT per entity: the public phone page (mobilescan.php) runs without a
+ * login and therefore without knowing the entity; the pairing file itself records it.
  *
  * @return string
  */
@@ -242,9 +269,11 @@ function swisspayments_db_columns() {
  * MySQL/MariaDB and PostgreSQL.
  *
  * @param DoliDB $db
+ * @param string $fromVersion  Schema version stored before this run ('' = unknown/none);
+ *                             selects the one-time data migrations to apply
  * @return int  1
  */
-function swisspayments_migrate_tables($db) {
+function swisspayments_migrate_tables($db, $fromVersion = '') {
 	foreach (swisspayments_db_columns() as $table => $defs) {
 		foreach ($defs as $def) {
 			$col = trim(substr($def, 0, strpos($def, ' ')));
@@ -255,7 +284,63 @@ function swisspayments_migrate_tables($db) {
 			}
 		}
 	}
+	swisspayments_backfill_entities($db, $fromVersion);
 	return 1;
+}
+
+/**
+ * One-time data migration (2026.11.3): rows that existed before the `entity` column was
+ * added all got the column default 1. On an install that already ran several entities
+ * they are invisible in the entity they belong to. Re-derive the entity from the parent
+ * record (supplier invoice / third party / supplier payment). Only rows still carrying
+ * the default 1 are touched, and it runs once (gated by the stored schema version),
+ * because a swisspayments_soc row is per entity by design and may later legitimately
+ * differ from the entity owning a shared third party.
+ *
+ * @param DoliDB $db
+ * @param string $fromVersion  Schema version stored before this run
+ * @return int  1 if the backfill ran, 0 if it was not needed
+ */
+function swisspayments_backfill_entities($db, $fromVersion = '') {
+	if ($fromVersion !== '' && version_compare($fromVersion, '2026.11.3', '>=')) {
+		return 0;
+	}
+	$p = MAIN_DB_PREFIX;
+	// child table, FK column, parent table
+	$map = array(
+		array('swisspayments_factf', 'fk_factid', 'facture_fourn'),
+		array('swisspayments_soc', 'fk_societe', 'societe'),
+		array('swisspayments_payl', 'fk_payementfourn', 'paiementfourn'),
+	);
+	foreach ($map as $m) {
+		$sql = "UPDATE ".$p.$m[0]." SET entity = (SELECT par.entity FROM ".$p.$m[2]." par WHERE par.rowid = ".$p.$m[0].".".$m[1].")";
+		$sql .= " WHERE entity = 1 AND ".$m[1]." IN (SELECT par2.rowid FROM ".$p.$m[2]." par2 WHERE par2.entity > 1)";
+		if (!$db->query($sql)) {
+			dol_syslog(__FUNCTION__." backfill of ".$m[0]." failed: ".$db->lasterror(), LOG_WARNING);
+		}
+	}
+	// A batch header follows its (already corrected) lines.
+	$sql = "UPDATE ".$p."swisspayments_payh SET entity = (SELECT MAX(l.entity) FROM ".$p."swisspayments_payl l WHERE l.fk_payh = ".$p."swisspayments_payh.rowid)";
+	$sql .= " WHERE entity = 1 AND rowid IN (SELECT l2.fk_payh FROM ".$p."swisspayments_payl l2 WHERE l2.entity > 1)";
+	if (!$db->query($sql)) {
+		dol_syslog(__FUNCTION__." backfill of swisspayments_payh failed: ".$db->lasterror(), LOG_WARNING);
+	}
+	return 1;
+}
+
+/**
+ * Persist the schema version. The schema is shared by all entities, so the constant is
+ * stored once with entity 0 (visible everywhere); per-entity copies written by older
+ * releases are removed first, since they would override the entity-0 value.
+ *
+ * @param DoliDB $db
+ * @param string $version
+ * @return void
+ */
+function swisspayments_store_db_version($db, $version) {
+	require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
+	dolibarr_del_const($db, 'SWISSPAYMENTS_DB_VERSION', -1);
+	dolibarr_set_const($db, 'SWISSPAYMENTS_DB_VERSION', $version, 'chaine', 0, '', 0);
 }
 
 /**
@@ -282,11 +367,9 @@ function swisspayments_check_db_version($db, $conf) {
 	if ($stored !== '' && version_compare($stored, $current, '>=')) {
 		return 1; // schema already at or above the current version
 	}
-	// dolibarr_set_const() lives in admin.lib.php, which ordinary pages do not load.
-	require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
-	swisspayments_migrate_tables($db);
+	swisspayments_migrate_tables($db, $stored);
 	swisspayments_fix_menu_langs($db);
-	dolibarr_set_const($db, 'SWISSPAYMENTS_DB_VERSION', $current, 'chaine', 0, '', $conf->entity);
+	swisspayments_store_db_version($db, $current);
 	// Reflect it in memory so the guard is a no-op for the rest of this request.
 	if (!isset($conf->global)) {
 		$conf->global = new stdClass();

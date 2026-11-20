@@ -7,6 +7,33 @@ uses date‑based versions (`YYYY.M`).
 
 ## [Unreleased]
 
+## [2026.11.3] – 2026-11-20
+
+Multi-company (multicompany module) follow-ups. Not yet verified on a running
+multicompany install.
+
+### Fixed
+- **Payment file could not be downloaded in entities other than 1.** The file was written
+  to a hard-coded `DOL_DATA_ROOT/swisspayments/dtafiles/`, while `document.php` resolves
+  the module's documents per entity (`DOL_DATA_ROOT/<entity>/swisspayments/`). Files are
+  now written to the entity-aware directory (`swisspayments_data_dir()`), which also
+  separates the payment files of different companies. Entity 1 / single-company installs
+  keep the previous path.
+- **Duplicate invoice-number check ignored the entity.** With third parties shared between
+  companies, an invoice in company A blocked the same supplier reference in company B.
+- **Legacy rows invisible on installs that already ran several entities.** Rows created
+  before the `entity` column existed all got entity 1. A one-time backfill now derives the
+  entity from the parent record (supplier invoice, third party, supplier payment) for
+  rows still carrying the default.
+- Mobile scan: the desktop poll now also checks the entity of the pairing, and the public
+  phone page shows the logo of the company the pairing was started in.
+
+### Changed
+- `SWISSPAYMENTS_DB_VERSION` is stored once for all entities (entity 0) instead of per
+  entity, so the schema migration no longer re-runs once per company.
+- `swisspayments_soc` (ESR participant mapping) intentionally stays per entity, even when
+  third parties are shared between companies.
+
 ## [2026.11.2] – 2026-11-17
 
 All fixes below were reproduced and verified on a running Dolibarr 24.0.2 instance.

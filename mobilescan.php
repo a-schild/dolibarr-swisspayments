@@ -79,8 +79,19 @@ header('Content-Type: text/html; charset=UTF-8');
 // viewimage.php), otherwise fall back to a "Swisspayments" wordmark.
 $logoHtml = '<span class="brandmark">Swiss<span class="accent">payments</span></span>';
 $societeLogo = swisspayments_conf_string('MAIN_INFO_SOCIETE_LOGO');
+// This public page runs without a login, i.e. in the default entity. Show the logo of the
+// company the pairing was started in (recorded in the pairing file).
+$logoEntity = (int) $conf->entity;
+if ($valid && (int) ($data['entity'] ?? 0) > 0 && (int) $data['entity'] !== $logoEntity) {
+	$logoEntity = (int) $data['entity'];
+	$societeLogo = '';
+	$resLogo = $db->query("SELECT value FROM " . MAIN_DB_PREFIX . "const WHERE name = 'MAIN_INFO_SOCIETE_LOGO' AND entity = " . $logoEntity);
+	if ($resLogo && ($objLogo = $db->fetch_object($resLogo))) {
+		$societeLogo = (string) $objLogo->value;
+	}
+}
 if ($societeLogo !== '') {
-	$logoUrl = DOL_URL_ROOT . '/viewimage.php?modulepart=mycompany&entity=' . ((int) $conf->entity) . '&file=' . urlencode('logos/' . $societeLogo);
+	$logoUrl = DOL_URL_ROOT . '/viewimage.php?modulepart=mycompany&entity=' . $logoEntity . '&file=' . urlencode('logos/' . $societeLogo);
 	$logoHtml = '<img src="' . dol_escape_htmltag($logoUrl) . '" alt="Logo">';
 }
 ?>

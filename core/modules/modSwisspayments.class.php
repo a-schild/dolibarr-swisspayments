@@ -19,7 +19,7 @@ class modswisspayments extends DolibarrModules
 {
 
 	/** Current module version (single source of truth; bump on each release). */
-	const VERSION = '2026.11.2';
+	const VERSION = '2026.11.3';
 
 	/**
 	 * 	Constructor. Define names, constants, directories, boxes, permissions
@@ -514,11 +514,10 @@ class modswisspayments extends DolibarrModules
 
 		$sql = array();
 
-                $dtaPath= DOL_DATA_ROOT . "/swisspayments/dtafiles/";
-                if (!file_exists($dtaPath))
-                {
-                    mkdir($dtaPath,0777,true);
-                }
+		dol_include_once('/swisspayments/lib/swisspayments.lib.php');
+
+		// Entity-aware data directory (DOL_DATA_ROOT/<entity>/swisspayments for entity > 1).
+		dol_mkdir(swisspayments_data_dir('dtafiles'));
 
 		$result = $this->loadTables();
 
@@ -526,13 +525,11 @@ class modswisspayments extends DolibarrModules
 		// EXISTS above never alters an existing table). The shared, idempotent migration
 		// is also used by the runtime auto-migration guard (swisspayments_check_db_version),
 		// so both paths apply the exact same schema changes.
-		dol_include_once('/swisspayments/lib/swisspayments.lib.php');
-		if (function_exists('swisspayments_migrate_tables')) {
-			swisspayments_migrate_tables($this->db);
-		}
-		// Record the schema version so the runtime guard is a no-op after a proper
-		// (re)activation.
-		dolibarr_set_const($this->db, 'SWISSPAYMENTS_DB_VERSION', self::VERSION, 'chaine', 0, '', $conf->entity);
+		$stored = isset($conf->global->SWISSPAYMENTS_DB_VERSION) ? (string) $conf->global->SWISSPAYMENTS_DB_VERSION : '';
+		swisspayments_migrate_tables($this->db, $stored);
+		// Record the schema version (once, for all entities) so the runtime guard is a
+		// no-op after a proper (re)activation.
+		swisspayments_store_db_version($this->db, self::VERSION);
 
 		return $this->_init($sql, $options);
 	}
