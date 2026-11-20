@@ -52,6 +52,7 @@ SwpInvoiceExists=Rechnung Nr. %s existiert für diesen Lieferanten schon
 SwpInvoiceExistsChange=Rechnung Nr. %s existiert für diesen Lieferanten schon, bitte Rechnungsnummer ändern
 SwpDuplicateCheckError=Fehler bei der Duplikatsprüfung
 SwpMultipleAccountsSameIban=Mehrere Konten mit gleicher IBAN gefunden (%s). Bitte Lieferant manuell zuweisen.
+SwpBankAccountNotAllowed=Das gewählte Bankkonto ist für diese Firma nicht verfügbar.
 SwpDbError=Datenbankfehler: %s
 
 # dtapayments.php

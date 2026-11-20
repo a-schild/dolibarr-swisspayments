@@ -25,6 +25,9 @@ multicompany install.
   before the `entity` column existed all got entity 1. A one-time backfill now derives the
   entity from the parent record (supplier invoice, third party, supplier payment) for
   rows still carrying the default.
+- **Debit bank account is validated on payment.** `dtapayments.php` took the posted
+  `accountid` as-is; it must now be an account of the current entity or one shared with
+  it (`getEntity('bank_account')`), otherwise the batch is rejected.
 - Mobile scan: the desktop poll now also checks the entity of the pairing, and the public
   phone page shows the logo of the company the pairing was started in.
 

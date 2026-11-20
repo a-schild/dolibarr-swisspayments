@@ -118,7 +118,25 @@ if (isset($_REQUEST["createDTAPay"]))
 {
     $factIDS= explode(";", $_REQUEST["factures"]);
     //dol_syslog("Factures to pay: " . var_export($factIDS, true));
-    $accountid= GETPOST('accountid');
+    $accountid= (int) GETPOST('accountid', 'int');
+
+    // The debit account must be one the current entity may use (its own or one shared
+    // with it through multicompany) - never trust the posted id.
+    if (swisspayments_mod_enabled('banque'))
+    {
+        $accountOk = false;
+        if ($accountid > 0)
+        {
+            $resAcc = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."bank_account WHERE rowid = ".$accountid." AND entity IN (".getEntity('bank_account').")");
+            $accountOk = ($resAcc && $db->num_rows($resAcc) > 0);
+        }
+        if (! $accountOk)
+        {
+            dol_syslog("dtapayments.php: bank account ".$accountid." not allowed for entity ".$conf->entity, LOG_WARNING);
+            setEventMessage($langs->trans('SwpBankAccountNotAllowed'), 'errors');
+            $error++;
+        }
+    }
     
     $dtaPayments;
     
@@ -127,8 +145,12 @@ if (isset($_REQUEST["createDTAPay"]))
     
     $payh= new Swisspaymentspayh($db);
     $payh->payident= $_POST['num_paiement'];
-    $res= $payh->create($user);
-    if ($res < 0)
+    $res= $error ? 0 : $payh->create($user);
+    if ($error)
+    {
+        // Invalid bank account: nothing is created, the transaction is rolled back below.
+    }
+    else if ($res < 0)
     {
         setEventMessage($payh->error, 'errors');
         $error++;
