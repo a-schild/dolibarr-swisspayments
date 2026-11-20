@@ -136,7 +136,7 @@ if ($action == 'pay') { // CLI equivalent of the dtapayments.php POST handler + 
 	chk('document.php path == written file, access allowed', $chk['original_file'] == $expect && !empty($chk['accessallowed']));
 	if (is_file($expect)) {
 		$d = new DOMDocument(); $d->load($expect); libxml_use_internal_errors(true);
-		$valid = @$d->$d->schemaValidate(dol_buildpath('/swisspayments/tests/pain.001.001.09.ch.03.xsd'));
+		$valid = @$d->schemaValidate(dol_buildpath('/swisspayments/tests/pain.001.001.09.ch.03.xsd'));
 		$cannotCompile = false; foreach (libxml_get_errors() as $e) { if (strpos($e->message, 'compile') !== false) $cannotCompile = true; }
 		// libxml < 2.9.11 (e.g. the Dolibarr 15 image) cannot compile a regex of this XSD.
 		if (!$valid && $cannotCompile) echo 'SKIP  XSD validation: this libxml ('.LIBXML_DOTTED_VERSION.") cannot compile the schema\n";
