@@ -2,16 +2,26 @@
 
 Tracked work that isn't a quick code fix. Newest concerns first.
 
-_All previously tracked items (batch-file IDOR, multi-entity isolation, the deprecated
+_The items tracked before (batch-file IDOR, multi-entity isolation, the deprecated
 legacy `swisspayments.php` page, and the missing `.lang` files) were resolved in
-release 2026.07.5 — see the [CHANGELOG](CHANGELOG.md). Nothing is currently open._
+release 2026.07.5 — see the [CHANGELOG](CHANGELOG.md)._
+
+## Open
+
+- `swisspayments_payh.payident` has a **global** `UNIQUE` key, and the form pre-fills it
+  with `date('Y-m-d-H:i')`. Two batches created in the same minute - in the same or in
+  different companies - fail with a raw "Duplicate entry ... for key 'payident'" error
+  until the user changes the number. Should become unique per entity (index migration)
+  and/or get a friendlier message.
 
 ## Notes for future work
 
 - Multi-company: files are written to the entity-aware `swisspayments_data_dir()`;
   `swisspayments_soc` is per entity **by design** (does not follow third-party sharing);
   the "to pay" list is strictly per entity (`f.entity = $conf->entity`, no multicompany
-  invoice sharing). The 2026.11.3 changes still need a test on a real multicompany install.
+  invoice sharing). The 2026.11.3 changes were tested on Dolibarr 15.0.3 and 24.0.2 with a
+  stub emulating third-party + bank-account sharing; a run against the real multicompany
+  module is still outstanding.
 - The one-time entity backfill (`swisspayments_backfill_entities()`, gated on a stored
   schema version < 2026.11.3) only touches rows with `entity = 1` whose parent record
   belongs to another entity. A `swisspayments_soc` row deliberately created in entity 1

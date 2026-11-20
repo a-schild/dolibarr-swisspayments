@@ -127,7 +127,7 @@ if (isset($_REQUEST["createDTAPay"]))
         $accountOk = false;
         if ($accountid > 0)
         {
-            $resAcc = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."bank_account WHERE rowid = ".$accountid." AND entity IN (".getEntity('bank_account').")");
+            $resAcc = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."bank_account WHERE rowid = ".$accountid." AND clos = 0 AND entity IN (".getEntity('bank_account').")");
             $accountOk = ($resAcc && $db->num_rows($resAcc) > 0);
         }
         if (! $accountOk)

@@ -448,7 +448,7 @@ class Swisspaymentspayh extends CommonObject {
 
                     $this->lines[$i]->fk_payh = $obj->fk_payh;
                     $this->lines[$i]->fk_payementfourn = $obj->fk_payementfourn;
-                    $this->lines[$i]->datec = $this->db->jdate($obj->datec);
+                    $this->lines[$i]->datec = isset($obj->datec) ? $this->db->jdate($obj->datec) : null;
 
                     $i++;
                 }

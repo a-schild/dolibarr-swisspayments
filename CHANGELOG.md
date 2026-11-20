@@ -9,8 +9,9 @@ uses date‑based versions (`YYYY.M`).
 
 ## [2026.11.3] – 2026-11-20
 
-Multi-company (multicompany module) follow-ups. Not yet verified on a running
-multicompany install.
+Multi-company (multicompany module) follow-ups. Tested on Dolibarr 15.0.3 and 24.0.2 with
+a second entity and a stub emulating multicompany's third-party and bank-account sharing;
+not yet verified against the real multicompany module.
 
 ### Fixed
 - **Payment file could not be downloaded in entities other than 1.** The file was written
@@ -21,13 +22,15 @@ multicompany install.
   keep the previous path.
 - **Duplicate invoice-number check ignored the entity.** With third parties shared between
   companies, an invoice in company A blocked the same supplier reference in company B.
+  Two of the checks also used a hard-coded `llx_` table prefix instead of `MAIN_DB_PREFIX`.
 - **Legacy rows invisible on installs that already ran several entities.** Rows created
   before the `entity` column existed all got entity 1. A one-time backfill now derives the
   entity from the parent record (supplier invoice, third party, supplier payment) for
   rows still carrying the default.
 - **Debit bank account is validated on payment.** `dtapayments.php` took the posted
-  `accountid` as-is; it must now be an account of the current entity or one shared with
-  it (`getEntity('bank_account')`), otherwise the batch is rejected.
+  `accountid` as-is; it must now be an open account of the current entity or one shared
+  with it (`getEntity('bank_account')`), otherwise the batch is rejected.
+- PHP warning "Undefined property: $datec" when generating a payment file.
 - Mobile scan: the desktop poll now also checks the entity of the pairing, and the public
   phone page shows the logo of the company the pairing was started in.
 

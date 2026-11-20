@@ -147,7 +147,7 @@ if ($result > 0) {
           $myobject->amount = price2num(GETPOST("amount", 'alpha'));
         }
         // Now check billNr for duplicates
-        $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
+        $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND entity=" . ((int) $conf->entity) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
         if ($resql) {
           $num = $db->num_rows($resql);
           $i = 0;
@@ -377,7 +377,7 @@ if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action =
 }
 
 if ($error == 0 && $societe->id != 0 && ($action == "createfacture" || $action == "createesrid")) {
-  $resql = $db->query("select * from llx_facture_fourn where fk_soc=" . $societe->id . " and ref_supplier='" . $db->escape($myobject->billnr) . "'");
+  $resql = $db->query("SELECT rowid FROM " . MAIN_DB_PREFIX . "facture_fourn WHERE fk_soc=" . ((int) $societe->id) . " AND entity=" . ((int) $conf->entity) . " AND ref_supplier='" . $db->escape($myobject->billnr) . "'");
   if ($resql) {
     $num = $db->num_rows($resql);
     $i = 0;
