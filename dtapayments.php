@@ -138,6 +138,19 @@ if (isset($_REQUEST["createDTAPay"]))
         }
     }
     
+    // The batch number must be unique within the company (DB key: payident + entity).
+    // Check up front for a readable message instead of a raw duplicate-key error.
+    $postedPayident = trim((string) GETPOST('num_paiement', 'alphanohtml'));
+    if (! $error && $postedPayident !== '')
+    {
+        $resPi = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."swisspayments_payh WHERE payident = '".$db->escape($postedPayident)."' AND entity = ".((int) $conf->entity));
+        if ($resPi && $db->num_rows($resPi) > 0)
+        {
+            setEventMessage($langs->trans('SwpPayIdentExists', $postedPayident), 'errors');
+            $error++;
+        }
+    }
+
     $dtaPayments;
     
     $datepaye = dol_mktime(12, 0, 0, GETPOST('remonth'), GETPOST('reday'), GETPOST('reyear'));

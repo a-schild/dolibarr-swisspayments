@@ -53,6 +53,7 @@ SwpInvoiceExistsChange=La fattura n. %s esiste già per questo fornitore, cambia
 SwpDuplicateCheckError=Errore durante il controllo dei duplicati
 SwpMultipleAccountsSameIban=Trovati più conti con lo stesso IBAN (%s). Assegnare il fornitore manualmente.
 SwpBankAccountNotAllowed=Il conto bancario selezionato non è disponibile per questa azienda.
+SwpPayIdentExists=Il numero di pagamento %s è già stato utilizzato. Inserire un altro numero.
 SwpDbError=Errore del database: %s
 
 # dtapayments.php

@@ -31,8 +31,17 @@ not yet verified against the real multicompany module.
   `accountid` as-is; it must now be an open account of the current entity or one shared
   with it (`getEntity('bank_account')`), otherwise the batch is rejected.
 - PHP warning "Undefined property: $datec" when generating a payment file.
+- **Batch number was unique across all companies.** `swisspayments_payh.payident` had a
+  global `UNIQUE` key, so two companies could not use the same payment number (the form
+  pre-fills date and minute). The key is now `(payident, entity)`; existing installs are
+  migrated automatically (`swisspayments_migrate_indexes()`). A duplicate within the same
+  company is reported with a readable message instead of a raw database error.
 - Mobile scan: the desktop poll now also checks the entity of the pairing, and the public
   phone page shows the logo of the company the pairing was started in.
+
+### Added
+- `tests/multicompany/`: Docker-based integration tests (Dolibarr 15 and 24, CLI +
+  browser) for the multi-company behaviour. See its README.
 
 ### Changed
 - `SWISSPAYMENTS_DB_VERSION` is stored once for all entities (entity 0) instead of per

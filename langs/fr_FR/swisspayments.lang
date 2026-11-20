@@ -53,6 +53,7 @@ SwpInvoiceExistsChange=La facture n° %s existe déjà pour ce fournisseur, veui
 SwpDuplicateCheckError=Erreur lors de la vérification des doublons
 SwpMultipleAccountsSameIban=Plusieurs comptes avec le même IBAN trouvés (%s). Veuillez attribuer le fournisseur manuellement.
 SwpBankAccountNotAllowed=Le compte bancaire sélectionné n'est pas disponible pour cette société.
+SwpPayIdentExists=Le numéro de paiement %s a déjà été utilisé. Veuillez saisir un autre numéro.
 SwpDbError=Erreur de base de données : %s
 
 # dtapayments.php

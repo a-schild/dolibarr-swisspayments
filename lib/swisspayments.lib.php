@@ -284,8 +284,63 @@ function swisspayments_migrate_tables($db, $fromVersion = '') {
 			}
 		}
 	}
+	swisspayments_migrate_indexes($db);
 	swisspayments_backfill_entities($db, $fromVersion);
 	return 1;
+}
+
+/**
+ * Index migration (2026.11.3): the batch number `swisspayments_payh.payident` used to be
+ * unique across ALL entities (inline "UNIQUE (payident)" in the CREATE TABLE). It is now
+ * unique per entity: drop the old single-column unique key and create
+ * uk_swisspayments_payh_payident (payident, entity). Idempotent - the existing indexes
+ * are looked up first, so nothing is executed once the schema is current. Must run after
+ * the `entity` column has been added.
+ *
+ * @param DoliDB $db
+ * @return int  1 if OK, -1 if an index statement failed
+ */
+function swisspayments_migrate_indexes($db) {
+	$table = MAIN_DB_PREFIX.'swisspayments_payh';
+	$newIdx = 'uk_swisspayments_payh_payident';
+	$isPg = (isset($db->type) && $db->type == 'pgsql');
+	$ok = 1;
+
+	// name => true of the existing indexes on the table
+	$existing = array();
+	if ($isPg) {
+		$resql = $db->query("SELECT indexname AS idx FROM pg_indexes WHERE tablename = '".$db->escape($table)."'");
+	} else {
+		$resql = $db->query("SHOW INDEX FROM ".$table);
+	}
+	if (!$resql) {
+		return -1;
+	}
+	while ($obj = $db->fetch_object($resql)) {
+		$name = $isPg ? $obj->idx : $obj->Key_name;
+		$existing[strtolower($name)] = true;
+	}
+
+	// Old global unique key: MySQL/MariaDB names it after the column, PostgreSQL
+	// "<table>_payident_key" (a constraint).
+	if ($isPg && isset($existing[strtolower($table).'_payident_key'])) {
+		if (!$db->query("ALTER TABLE ".$table." DROP CONSTRAINT ".$table."_payident_key")) {
+			$ok = -1;
+		}
+	} elseif (!$isPg && isset($existing['payident'])) {
+		if (!$db->query("ALTER TABLE ".$table." DROP INDEX payident")) {
+			$ok = -1;
+		}
+	}
+	if (!isset($existing[$newIdx])) {
+		if (!$db->query("CREATE UNIQUE INDEX ".$newIdx." ON ".$table." (payident, entity)")) {
+			$ok = -1;
+		}
+	}
+	if ($ok < 0) {
+		dol_syslog(__FUNCTION__." failed: ".$db->lasterror(), LOG_WARNING);
+	}
+	return $ok;
 }
 
 /**
